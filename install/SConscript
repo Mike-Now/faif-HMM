@@ -1,0 +1,272 @@
+#skrypt dla scons (nie ma sensu bezposrednio pod Pythonem) -*- mode: Python; -*-
+import os, platform, shutil, re
+import files
+
+Import('env')
+Import('faif_name')
+Import('ver_major')
+Import('ver_minor')
+Import('ver_compilation')
+Import('ver_install')
+
+faif_ver = ver_major + '.' + ver_minor
+faif_full_ver = faif_ver + '.' + ver_compilation + ver_install
+
+envsys = Environment(ENV = {'PATH' : os.environ['PATH']})
+
+very_short_description = """The C++ header-only artificial intelligence and bioinformatics algorithms library"""
+short_description = """This library defines basic abstractions (like nomnial value, domain, point, space, state, etc.) and implements: classifier algorithms (Naive Bayesian, Decision Tree ID3 inspired, K Nearest Neighbors); cross validator; space search methods ( Evolutionary Algorithm, Expectaiton-Maximization, Hill Climbing); timeseries primitives (TimeSeriesDigit, TimeSeriesReal, linear resampling, autoregressive predictor); DNA primitives (Nucleotide, Chain, EnergyNucleo, SecStruct, FoldedChain, FoldedPair, Codon, CodonAminoTable, Nussinov algorithm); Random generators; Gaussian eliminator. Serialization to text or XML based on boost::serialization."""
+
+def build_deb_package( machine ):
+    os.makedirs('./debian/DEBIAN');
+    #generuje plik control (do instalacji dla debiana)
+    file=open('./debian/DEBIAN/control','w')
+    file.write(
+        'Package: faif\n'
+        +'Version: '+ faif_full_ver
+        +
+        """
+Section: programming
+Priority: optional
+Architecture:"""+ machine + """
+Depends:
+Installed-Size: 374
+Maintainer: Robert Nowak <rnowak2@elka.pw.edu.pl>
+Description:""" + very_short_description + '\n'
++ ' ' + short_description + '\n'
+        )
+    file.close()
+
+    #copy headers
+    #install_include_dir = './debian/usr/include/faif/'
+    shutil.copytree('../faif','./debian/usr/include/faif')
+    # for mod in files.modules:
+    #     dir = install_include_dir + mod.path
+    #     os.makedirs(dir)
+    #     for file in mod.head:
+    #         shutil.copy('../src/'+file,dir)
+
+    #tworzy pakiet
+    os.system('dpkg-deb --build debian')
+    shutil.move('debian.deb',faif_name + '_'+ faif_full_ver + '_'+machine+'.deb')
+    print 'OK package Linux'
+    return
+
+if(platform.system() == 'Linux'):
+    build_deb_package( 'i386' ) #binary i386 (the binary has only headers)
+    shutil.rmtree('debian')
+    build_deb_package( 'amd64' ) #binary amd64 (the binary has only heders)
+
+    #the packed sources
+    os.system('cd ..; tar -cvf faif-src-'+faif_ver+'.tar'
+              ' src/* tests/* examples/* ./SConstruct ./files.py install/SConscript install/Doxyfile --exclude-vcs;'
+              'bzip2 faif-src-'+faif_ver+'.tar; mv faif-src-'+faif_ver+'.tar.bz2 install; cd install' )
+    print 'build source package'
+
+    #the documentation - copy examples
+    os.makedirs('../../doc/html/examples')
+    for root, dirs, files in os.walk('../examples'):
+        for name in files:
+            filename = os.path.join(root, name)
+            if re.match('.*\.cpp$', filename):
+                print 'install:' + str(name)
+                shutil.copy( str(filename), '../../doc/html/examples/'+str(name) )
+                #env.Install( '../../xxx', '../examples/' + str(name) )
+                #env.Install( '../../doc/html/examples/', str(name) )
+
+    #generate the doxygen
+    file=open('./debian/usr/include/faif/faif.h','w')
+    file.write("""
+/*! \mainpage FAIF ver """ + faif_ver + """
+<h2 align = "center"> FAIF - Fast Artificial Intelligence Framework </h2>
+
+<p>""" + short_description + """
+</p>
+*/""")
+    file.close()
+
+    os.system('doxygen;'
+              'tar -cvf faif-doc-'+faif_ver+'.tar ../../doc/html/* --exclude-vcs;'
+              'bzip2 faif-doc-'+faif_ver+'.tar')
+    print 'build documentation (doxygen)'
+    #cleaning
+    shutil.rmtree('debian')
+
+elif (platform.system() == "Windows"):
+    file=open('faif.nsis','w')
+    file.write(
+R"""
+; wersja: major.minor.build(date).revision
+
+!ifndef VERSION
+  !define VERSION '""" + faif_full_ver + R"""'
+!endif
+
+;---------------------
+;Include Modern UI
+
+!include "MUI.nsh"
+
+;--------------------------------
+;General
+
+  Name "Faif"
+  Caption "Faif - Fast Artificial Intelligence Framework Library ${VERSION} Setup"
+  OutFile ".\Faif-${VERSION}-setup.exe"
+
+  InstallDir "C:\usr\local"
+  InstallDirRegKey HKLM "Software\faif" "Install_Dir"
+
+;--------------------------------
+;Interface Settings
+
+  !define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\orange-install.ico"
+  !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\orange-uninstall.ico"
+  !define MUI_HEADERIMAGE_BITMAP "${NSISDIR}\Contrib\Graphics\Header\orange.bmp"
+
+  !define MUI_ABORTWARNING
+
+;--------------------------------
+;Pages
+
+  !define MUI_WELCOMEFINISHPAGE_BITMAP "${NSISDIR}\Contrib\Graphics\Wizard\orange.bmp"
+  !define MUI_WELCOMEPAGE_TEXT $(DESC_WELCOMEPAGE_TEXT)
+  !define MUI_WELCOMEPAGE_TITLE $(DESC_WELCOMEPAGE_TITLE)
+  !insertmacro MUI_PAGE_WELCOME
+  !insertmacro MUI_PAGE_DIRECTORY
+  !insertmacro MUI_PAGE_INSTFILES
+
+  !insertmacro MUI_UNPAGE_CONFIRM
+  !insertmacro MUI_UNPAGE_INSTFILES
+
+;--------------------------------
+;Language Selection Dialog Settings
+
+  ;Remember the installer language
+  !define MUI_LANGDLL_REGISTRY_ROOT "HKCU"
+  !define MUI_LANGDLL_REGISTRY_KEY "Software\faif"
+  !define MUI_LANGDLL_REGISTRY_VALUENAME "Installer Language"
+
+;--------------------------------
+;Languages
+
+  !insertmacro MUI_LANGUAGE "Polish"
+  !insertmacro MUI_LANGUAGE "English"
+
+  LangString DESC_WELCOMEPAGE_TITLE ${LANG_POLISH} "Witaj w programie instalacyjnym biblioteki FAIF."
+  LangString DESC_WELCOMEPAGE_TITLE ${LANG_ENGLISH} "Welcome to the FAIF library installer."
+
+  LangString DESC_WELCOMEPAGE_TEXT ${LANG_POLISH} """ + '"' + short_description + '"' + """
+  LangString DESC_WELCOMEPAGE_TEXT ${LANG_ENGLISH} """ + '"' + short_description + '"' + """
+
+  LangString PAGE_INFO_TITLE ${LANG_POLISH} "Opis biblioteki"
+  LangString PAGE_INFO_TITLE ${LANG_ENGLISH} "Library Description."
+
+  LangString PAGE_INFO_SUBTITLE ${LANG_POLISH} "Skladniki biblioteki FAIF. Uwagi."
+  LangString PAGE_INFO_SUBTITLE ${LANG_ENGLISH} "FAIF's components."
+
+  LangString PAGE_INFO ${LANG_POLISH} "PageInfoPL.ini"
+  LangString PAGE_INFO ${LANG_ENGLISH} "PageInfoEN.ini"
+
+;--------------------------------
+;Reserve Files
+
+  ;If you are using solid compression, files that are required before
+  ;the actual installation should be stored first in the data block,
+  ;because this will make your installer start faster.
+
+  ReserveFile "PageInfoPL.ini"
+  ReserveFile "PageInfoEN.ini"
+  !insertmacro MUI_RESERVEFILE_INSTALLOPTIONS
+  !insertmacro MUI_RESERVEFILE_LANGDLL
+
+;--------------------------------
+;Version Number
+; major.minor.build.(date).revision
+  !define /date BuildDate "%Y%m%d"
+  !define /date BuildDateShort "%m%d"
+  VIProductVersion """ + ver_major + '.' + ver_minor + '.' + ver_compilation + R""".${BuildDateShort}
+  VIAddVersionKey /LANG=${LANG_POLISH} "ProductName" "Fast Artificial Intelligence Framework"
+  VIAddVersionKey /LANG=${LANG_POLISH} "Comments" "Biblioteka FAIF - komentarz"
+  VIAddVersionKey /LANG=${LANG_POLISH} "CompanyName" "Politechnika Warszawska,   Zaklad Sztucznej Inteligencji"
+  VIAddVersionKey /LANG=${LANG_POLISH} "LegalCopyright" "PW ZSI"
+  VIAddVersionKey /LANG=${LANG_POLISH} "FileDescription" "Biblioteka FAIF"
+  VIAddVersionKey /LANG=${LANG_POLISH} "FileVersion" """ + '"' + ver_major + '.' + ver_minor + '.' + ver_compilation + R""".${BuildDate}"
+
+;--------------------------------
+;Installer Sections
+
+Section "!Headers (required)" headers
+  SectionIn RO
+
+  ;includes
+""")
+
+    for mod in files.modules:
+        c = r'SetOutPath $INSTDIR\include\faif' + '\\' + re.sub(r'/', r'\\', mod.path)
+        file.write( c[:-1] + '\n')
+        for f in mod.head:
+            file.write('File "..\\src\\' + re.sub(r'/', r'\\', f) + '"\n')
+    file.write(R"""
+writeUninstaller $INSTDIR\uninstall-faif.exe
+
+SectionEnd
+
+;--------------------------------
+;Installer Functions
+
+Function .onInit
+
+  !insertmacro MUI_LANGDLL_DISPLAY
+
+  ;Extract InstallOptions INI files
+  !insertmacro MUI_INSTALLOPTIONS_EXTRACT "PageInfoPL.ini"
+  !insertmacro MUI_INSTALLOPTIONS_EXTRACT "PageInfoEN.ini"
+
+FunctionEnd
+
+;Function PageInfo
+
+;  !insertmacro MUI_HEADER_TEXT "$(PAGE_INFO_TITLE)" "$(PAGE_INFO_SUBTITLE)"
+;  !insertmacro MUI_INSTALLOPTIONS_DISPLAY "$(PAGE_INFO)"
+
+;FunctionEnd
+
+;--------------------------------
+;Descriptions
+
+  ;Language strings
+  LangString DESC_Libraries ${LANG_POLISH} "Biblioteki dla MingW oraz Visual Studio 2005."
+  LangString DESC_Libraries ${LANG_ENGLISH} "Libraries for MingW and Visual Studio 2005."
+  LangString DESC_Headers ${LANG_POLISH} "Pliki naglowkowe."
+  LangString DESC_Headers ${LANG_ENGLISH} "Header files."
+
+  ;Assign language strings to sections
+  !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
+    !insertmacro MUI_DESCRIPTION_TEXT ${headers} $(DESC_Headers)
+  !insertmacro MUI_FUNCTION_DESCRIPTION_END
+
+;--------------------------------
+;Uninstaller Section
+
+Section "Uninstall"
+
+  ; Remove registry keys
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\faif"
+  DeleteRegKey HKLM SOFTWARE\faif
+
+  ; usuwa deinstalator
+  Delete $INSTDIR\uninstall-faif.exe
+
+  ; usuwa naglowki
+  RMDir /r $INSTDIR\include\faif
+
+SectionEnd
+""")
+    #zwolnienie uchwytu do pliku
+    file = ""
+    os.system('makensis.exe faif.nsis')
+    os.system('del faif.nsis')
+#
+else:
+    print 'not supported yet'
