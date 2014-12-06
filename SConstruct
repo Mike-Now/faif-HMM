@@ -8,9 +8,11 @@ ver_minor = '35'
 ver_compilation = '000'
 
 BOOST_INCLUDE_WINDOWS = 'c:/Boost/include/boost-1_52'
-BOOST_INCLUDE_LINUX = '/usr/local/include'
+#BOOST_INCLUDE_LINUX = '/usr/local/include'
+BOOST_INCLUDE_LINUX = '/usr/local/boost_1_57_0'
 BOOST_LIB_WINDOWS = 'c:/Boost/lib'
-BOOST_LIB_LINUX = '/usr/local/lib'
+BOOST_LIB_LINUX = '/usr/local/boost_1_57_0/stage/lib'
+#BOOST_LIB_LINUX = '/usr/local/lib'
 
 BOOST_THREAD_LINUX = 'boost_thread'
 BOOST_THREAD_LINUX_D = 'boost_thread'
@@ -25,9 +27,8 @@ BOOST_SERIALIZATION_LINUX_D = 'boost_serialization'
 BOOST_UNIT_TEST_LINUX = 'boost_unit_test_framework'
 BOOST_UNIT_TEST_LINUX_D = 'boost_unit_test_framework'
 
-
 #odczytuje wersje kompilacji z wersji repozytorium
-ver_repository = subprocess.Popen('hg sum', shell=True, stdout=subprocess.PIPE).communicate()[0]
+#ver_repository = subprocess.Popen('hg sum', shell=True, stdout=subprocess.PIPE).communicate()[0]
 try:
    ver_compilation = re.search('(?<=parent: )\d+', ver_repository).group()
 except BaseException:
@@ -36,15 +37,18 @@ except BaseException:
 ver_install = '-1'
 
 faif_ver = ver_major + '.' + ver_minor
-faif_full_ver = faif_ver + '.' + ver_compilation + ver_install
-
-
+#faif_full_ver = faif_ver + '.' + ver_compilation + ver_install
+faif_full_ver='0.35.674' #todo git describe
+ver_compilation='100'
 #dodaje dodatkowe argumenty do budowania
 
 vars = Variables('custom.py')
 vars.Add(BoolVariable('install', 'build debian package or setup.exe', 0))
+vars.Add(EnumVariable('compiler','clang gcc and default','default',allowed_values={'clang','gcc','default'},map={},ignorecase=2))
+vars.Add(EnumVariable('clibrary','c99 c11','c11',allowed_values={'c99','c11'},map={},ignorecase=2))
 
 env = Environment(variables=vars)
+
 
 #dodaje opis argumentow do pomocy
 Help(vars.GenerateHelpText(env) )
@@ -60,7 +64,16 @@ if(platform.system() == "Linux"):
    env.Append( LIBPATH = BOOST_LIB_LINUX )
    #env.Append( CPPFLAGS = '-Wall -pedantic -pthread -fPIC -Wstrict-aliasing=2' )
    env.Append( CPPFLAGS = '-Wall -pedantic -pthread' )
-   env.Append( LINKFLAGS = '-Wall -pthread' )
+   if (env['compiler']=='clang'):
+        env.Replace(CXX='clang++') 
+   elif (env['compiler']=='gcc'):
+        env.Replace(CXX='gcc')
+
+   if(env['clibrary']=='c11'):
+        env.Append(CXXFLAGS='-std=c++11') 
+        env.Append(LINKFLAGS= '-Wall -pthread')
+   else:
+        env.Append( LINKFLAGS = '-Wall -pthread' )
 elif(platform.system() == "Windows"):
    env.Append( CPPPATH = [ Dir('.'), Dir(BOOST_INCLUDE_WINDOWS) ] )
    env.Append( LIBPATH = BOOST_LIB_WINDOWS )
