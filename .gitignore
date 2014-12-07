@@ -1,6 +1,8 @@
 /build
 /faif
 /dist
+/bin
+
 /dna
 /dtc
 /dtcdb
@@ -12,4 +14,8 @@
 /random
 /search
 /test*
+
+*.obj
 *.pyc
+*.dblite
+*.swp
