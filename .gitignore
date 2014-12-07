@@ -1,0 +1,11 @@
+bin/
+dist/
+faif/
+build/
+
+
+*.obj
+*.pyc
+*.dblite
+*.swp
+

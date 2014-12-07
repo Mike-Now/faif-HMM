@@ -1,5 +1,5 @@
 #srodowisko dla debiana -*- mode: Python; -*-
-import os, platform, re, subprocess
+import os, platform, subprocess
 
 faif_name = 'faif'
 
@@ -7,10 +7,12 @@ ver_major = '0'
 ver_minor = '35'
 ver_compilation = '000'
 
-BOOST_INCLUDE_WINDOWS = 'c:/Boost/include/boost-1_52'
+os_platform=platform.system()
+
+BOOST_INCLUDE_WINDOWS = '/C/msys64/opt/boost_1_57'
 #BOOST_INCLUDE_LINUX = '/usr/local/include'
 BOOST_INCLUDE_LINUX = '/usr/local/boost_1_57_0'
-BOOST_LIB_WINDOWS = 'c:/Boost/lib'
+BOOST_LIB_WINDOWS = '/C/msys64/opt/boost_1_57/stage/lib'
 BOOST_LIB_LINUX = '/usr/local/boost_1_57_0/stage/lib'
 #BOOST_LIB_LINUX = '/usr/local/lib'
 
@@ -59,9 +61,16 @@ Export('ver_major ver_minor ver_compilation ver_install')
 
 
 #settings for debug and release
-if(platform.system() == "Linux"):
-   env.Append( CPPPATH = [ Dir('.'), Dir(BOOST_INCLUDE_LINUX) ] )
-   env.Append( LIBPATH = BOOST_LIB_LINUX )
+if(os_platform== "Linux" or 'mingw' in os_platform.lower() ):
+   if('mingw' in os_platform.lower()):
+
+        env.Append( CPPPATH = [ Dir('.'), Dir(BOOST_INCLUDE_WINDOWS) ] )
+        env.Append( LIBPATH = BOOST_LIB_WINDOWS )
+   else:
+        env.Append( CPPPATH = [ Dir('.'), Dir(BOOST_INCLUDE_LINUX) ] )
+        env.Append( LIBPATH = BOOST_LIB_LINUX )
+
+
    #env.Append( CPPFLAGS = '-Wall -pedantic -pthread -fPIC -Wstrict-aliasing=2' )
    env.Append( CPPFLAGS = '-Wall -pedantic -pthread' )
    if (env['compiler']=='clang'):
@@ -71,22 +80,20 @@ if(platform.system() == "Linux"):
 
    if(env['clibrary']=='c11'):
         env.Append(CXXFLAGS='-std=c++11') 
-        env.Append(LINKFLAGS= '-Wall -pthread')
-   else:
-        env.Append( LINKFLAGS = '-Wall -pthread' )
-elif(platform.system() == "Windows"):
+   env.Append( LINKFLAGS = '-Wall -pthread' )
+elif(os_platform== "Windows"):
    env.Append( CPPPATH = [ Dir('.'), Dir(BOOST_INCLUDE_WINDOWS) ] )
    env.Append( LIBPATH = BOOST_LIB_WINDOWS )
    env.Append( WINDOWS_INSERT_MANIFEST = True )
 else:
-   print "platform not supported"
+   print "os_platform not supported"
 
 envdebug = env.Clone()
 
 env.debugFlag = False        #member used to distinguish between debug environment and non-debug one
 envdebug.debugFlag = True
 
-if(platform.system() == "Linux"):
+if(os_platform== "Linux" or 'mingw' in os_platform.lower()):
    env.Append( CPPFLAGS = ' -O3' )
    env.Append( LINKFLAGS = ' -O3' )
    env.Append( LIBS = [BOOST_THREAD_LINUX, BOOST_DATE_TIME_LINUX, BOOST_SERIALIZATION_LINUX, BOOST_CHRONO_LINUX, BOOST_SYSTEM_LINUX] )
@@ -95,18 +102,18 @@ if(platform.system() == "Linux"):
    envdebug.Append( LINKFLAGS = ' -g ' ) #-fprofile-arcs
    envdebug.Append( LIBS = [BOOST_THREAD_LINUX_D, BOOST_DATE_TIME_LINUX_D, BOOST_SERIALIZATION_LINUX_D, BOOST_CHRONO_LINUX_D, BOOST_SYSTEM_LINUX_D ] )
 
-elif(platform.system() == "Windows"):
+elif(os_platform== "Windows" ):
    env.Append( CPPFLAGS = ' /EHsc /MD /D "WIN32" /D "_CONSOLE" /W4 /Ox' )
    env.Append( LINKFLAGS = ' /SUBSYSTEM:CONSOLE ' )
 
    envdebug.Append( CPPFLAGS = ' /Od /EHsc /MDd /D "WIN32" /D "_CONSOLE" /D "_DEBUG" /W4 /ZI /TP' )
    envdebug.Append( LINKFLAGS = ' /SUBSYSTEM:CONSOLE /DEBUG ' )
 else:
-   print "System " + platform.system() + " not supported "
+   print "System " + os_platform +" not supported "
 
 
 def add_test_settings( e ):
-   if(platform.system() == "Linux"):
+   if(os_platform== "Linux" or 'mingw' in os_platform.lower()):
       if hasattr(e, 'debugFlag'):
          if e.debugFlag:
             e.Append( LIBS = BOOST_UNIT_TEST_LINUX_D )
@@ -114,7 +121,7 @@ def add_test_settings( e ):
             e.Append( LIBS = BOOST_UNIT_TEST_LINUX )
       else:
          e.Append( LIBS = BOOST_UNIT_TEST_LINUX )
-   elif(platform.system() == "Windows"):
+   elif(os_platform== "Windows" ):
       pass
    else:
       print 'system not supported'
