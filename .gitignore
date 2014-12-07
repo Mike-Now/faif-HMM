@@ -1,0 +1,15 @@
+/build
+/faif
+/dist
+/dna
+/dtc
+/dtcdb
+/ea
+/hillclimb
+/knn
+/nbc
+/nbcdb
+/random
+/search
+/test*
+*.pyc
