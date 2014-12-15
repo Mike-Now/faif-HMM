@@ -1,0 +1,7 @@
+language: cpp
+before_install:
+    - sudo apt-get update
+install:
+    - sudo apt-get install libboost-thread-dev libboost-date-time-dev libboost-chrono-dev libboost-system-dev libboost-test-dev libboost-serialization-dev 
+    - dpkg -S /usr/include/boost/version.hpp
+script: scons

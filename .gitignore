@@ -19,3 +19,5 @@
 *.pyc
 *.dblite
 *.swp
+.srclist
+tags
