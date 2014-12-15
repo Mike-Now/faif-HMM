@@ -1,5 +1,6 @@
 CC=clang++
-CFLAGS = -Wall -Werror -Wmissing-prototypes
+INCLUDE_DIRS=.
+CFLAGS = -Wall -Werror -Wmissing-prototypes -I$(INCLUDE_DIRS)
 LDFLAGS=
 SOURCES=$(wildcard *.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)
@@ -9,7 +10,7 @@ all: $(TARGET)
  
 $(TARGET): $(OBJECTS)
 	$(CC) $(LDFLAGS)  -o $@ $^
- 
+	./TravisTest	 
 %.o: %.cpp %.hpp
 	$(CC) $(CFLAGS) -c $<
  
