@@ -4,6 +4,6 @@
 namespace faif {
   const int FAIF_VERSION_MAJOR = 0;
   const int FAIF_VERSION_MINOR = 35;
-  const int FAIF_VERSION_COMPILATION = 100;
+  const int FAIF_VERSION_COMPILATION = 023;
 } //namespace faif
 #endif //FAIF_VERSION_H

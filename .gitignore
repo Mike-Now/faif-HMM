@@ -16,6 +16,9 @@
 /test*
 /dev/test_mlr
 /dev/*.o
+/install/*
+!/install/DoxyFile
+!/install/Sconscript
 
 *.obj
 *.pyc

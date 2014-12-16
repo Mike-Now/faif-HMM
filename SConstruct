@@ -223,7 +223,7 @@ def build_examples( env, build_dir ):
    build_single_program(em, 'search', source = prepare_src_files(build_dir, ['search.cpp'] ) )
 
 
-if env['install'] == 1:
+if 'install' in COMMAND_LINE_TARGETS:
    SConscript('install/SConscript')
 else:
    file_ver_name = 'src/Version.hpp'
