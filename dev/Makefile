@@ -4,13 +4,13 @@ CFLAGS = -Wall -Werror -Wmissing-prototypes -I$(INCLUDE_DIRS)
 LDFLAGS=
 SOURCES=$(wildcard *.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)
-TARGET=TravisTest
+TARGET=test_mlr
  
 all: $(TARGET)
  
 $(TARGET): $(OBJECTS)
 	$(CC) $(LDFLAGS)  -o $@ $^
-	./TravisTest	 
+	./test_mlr	 
 %.o: %.cpp %.hpp
 	$(CC) $(CFLAGS) -c $<
  
