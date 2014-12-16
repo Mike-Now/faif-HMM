@@ -9,10 +9,12 @@ ver_compilation = '000'
 
 os_platform=platform.system()
 
-BOOST_INCLUDE_WINDOWS = '/C/msys64/opt/boost_1_57'
+BOOST_INCLUDE_WINDOWS = 'C:\\boost_1_57_0'
+BOOST_INCLUDE_WINDOWS_MINGW = '/C/msys64/opt/boost_1_57'
 #BOOST_INCLUDE_LINUX = '/usr/local/include'
 BOOST_INCLUDE_LINUX = '/usr/local/boost_1_57_0'
-BOOST_LIB_WINDOWS = '/C/msys64/opt/boost_1_57/stage/lib'
+BOOST_LIB_WINDOWS_MINGW = '/C/msys64/opt/boost_1_57/stage/lib'
+BOOST_LIB_WINDOWS = 'C:\\boost_1_57_0\\lib64-msvc-12.0'
 BOOST_LIB_LINUX = '/usr/local/boost_1_57_0/stage/lib'
 #BOOST_LIB_LINUX = '/usr/local/lib'
 
@@ -36,12 +38,19 @@ try:
 except BaseException:
    pass
 
+try:   
+	ver_compilation = subprocess.Popen('git rev-list --count HEAD', shell=True,stdout=subprocess.PIPE).communicate()[0]
+	if (int(ver_compilation)<100):
+		ver_compilation=`0`+ver_compilation.rstrip()
+except BaseException:
+   pass   
+   
 ver_install = '-1'
 
 faif_ver = ver_major + '.' + ver_minor
-#faif_full_ver = faif_ver + '.' + ver_compilation + ver_install
-faif_full_ver='0.35.674' #todo git describe
-ver_compilation='100'
+faif_full_ver = faif_ver + '.' + ver_compilation + ver_install
+#faif_full_ver='0.35.674' #todo git describe
+#ver_compilation='100'
 #dodaje dodatkowe argumenty do budowania
 
 vars = Variables('custom.py')
@@ -64,8 +73,8 @@ Export('ver_major ver_minor ver_compilation ver_install')
 if(os_platform== "Linux" or 'mingw' in os_platform.lower() ):
    if('mingw' in os_platform.lower()):
 
-        env.Append( CPPPATH = [ Dir('.'), Dir(BOOST_INCLUDE_WINDOWS) ] )
-        env.Append( LIBPATH = BOOST_LIB_WINDOWS )
+        env.Append( CPPPATH = [ Dir('.'), Dir(BOOST_INCLUDE_WINDOWS_MINGW) ] )
+        env.Append( LIBPATH = BOOST_LIB_WINDOWS_MINGW )
    else:
         env.Append( CPPPATH = [ Dir('.'), Dir(BOOST_INCLUDE_LINUX) ] )
         env.Append( LIBPATH = BOOST_LIB_LINUX )
