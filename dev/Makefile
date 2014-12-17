@@ -18,4 +18,4 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(CFLAGS) -c $<
  
 clean:
-	rm -f *.o $(TARGET)C = gcc
+	rm -f *.o $(TARGET)
