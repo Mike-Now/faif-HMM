@@ -14,7 +14,8 @@
 /random
 /search
 /test*
-/dev/test_mlr
+/dev/MlrTest
+/dev/mlr
 /dev/*.o
 /install/*
 !/install/DoxyFile
