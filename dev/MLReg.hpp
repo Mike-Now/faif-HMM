@@ -2,10 +2,12 @@
 #define FAIF_MLReg_HPP
 
 #include <string>
-#include <boost/unordered_map.hpp>
+#include <map>
+#include <memory>
 #include <boost/functional/factory.hpp>
-#include <boost/functional/value_factory.hpp>
 #include <boost/function.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/static_assert.hpp>
 #include "Classifier.hpp"
 
 namespace faif {
@@ -28,6 +30,9 @@ namespace faif {
                     typedef typename Classifier<Val>::ExamplesTrain ExamplesTrain;
 
                     class MLRegTraining;
+
+                    typedef std::unique_ptr< MLRegTraining> MLRegTrainingPtr;
+                    typedef boost::function< MLRegTrainingPtr ()> AbstractFactory;
                 private:
                     class TrainingFactory;
                     std::unique_ptr<MLRegTraining>trainingImpl;
@@ -59,26 +64,30 @@ namespace faif {
                     class MLRegTraining {
                         public:
                             virtual void train(const ExamplesTrain& e)=0;
+                            virtual ~MLRegTraining(){};
                     };
                     class GISTraining : public MLRegTraining{
                         public:
-                            void train(const ExamplesTrain& e);
+                            void train(const ExamplesTrain& e){}
+                            ~GISTraining(){}
                     };
                 private:
                     class TrainingFactory{
                         private:
-                            static TrainingFactory instance;
-                            boost::unordered_map<std::string,boost::value_factory<MLRegTraining>> trainings;
+                            typedef typename MLReg<Val>::AbstractFactory AbstractFactory;
+                            std::map<std::string,AbstractFactory> trainings;
                         public:
+                            TrainingFactory();
                             static TrainingFactory& getInstance(){
+
+                                static TrainingFactory instance;
                                 return instance;
                             }
-                            boost::value_factory<MLRegTraining> getTraining(std::string trainingId);
+                            AbstractFactory getFactory(std::string trainingId);
                             template<class T>
                                 void registerTraining(std::string trainingId);
                         private:
-                            TrainingFactory();
-                            ~TrainingFactory();
+                            ~TrainingFactory(){}
                             TrainingFactory(const TrainingFactory&t);
                             TrainingFactory& operator=(const TrainingFactory&);
                     };
@@ -93,10 +102,11 @@ namespace faif {
         }
 
         template<typename Val>
-            MLReg<Val>::MLReg(const Domains& attr_domains, const AttrDomain& category_domain,std::string algorithmId)
+            MLReg<Val>::MLReg(const Domains& attr_domains, const AttrDomain& category_domain,std::string trainingId)
             : Classifier<Val>(attr_domains, category_domain)
             {
-                this->reset(algorithmId);
+                currentTrainingId = trainingId;
+                this->reset(trainingId);
             }
 
         /** clear the learned parameters */
@@ -106,10 +116,10 @@ namespace faif {
             };
 
         template<typename Val>
-            void MLReg<Val>::reset(std::string algorithmId){
-                boost::value_factory<MLRegTraining> factory;
-                factory = TrainingFactory::getInstance().getFactory(algorithmId);
-                trainingImpl.reset(factory());
+            void MLReg<Val>::reset(std::string treningId){
+                AbstractFactory factory;
+                factory = TrainingFactory::getInstance().getFactory(treningId);
+                trainingImpl=factory();
             };
 
         template<typename Val>
@@ -127,12 +137,23 @@ namespace faif {
         // class TrainingFactory implementation
         //////////////////////////////////////////////////////////////////////////////////////////////////
         template<typename Val>
-            boost::value_factory<typename MLReg<Val>::MLRegTraining>
+            MLReg<Val>::TrainingFactory::TrainingFactory(){
+                registerTraining<MLReg<Val>::GISTraining>("GIS");
+            }
+        template<typename Val>
+            typename MLReg<Val>::AbstractFactory
             MLReg<Val>::TrainingFactory::
-            getTraining(std::string trainingId){
-
-                /* typedef boost::function<MLRegTraining*()> TrainingFactory; */
-                /* static std::map<std::string,TrainingFactory> Factories; */
+            getFactory(std::string trainingId){
+                typename std::map<std::string, AbstractFactory>::iterator it;
+                it = trainings.find(trainingId);
+                if(it != trainings.end())
+                {
+                    return it->second;
+                }
+                else{
+                    std::cout<<"IS NULL PANIC";
+                    return NULL; //TODO generalized exception
+                }
             }
 
         template<typename Val>
@@ -140,9 +161,13 @@ namespace faif {
             void MLReg<Val>::TrainingFactory::
             registerTraining(std::string trainingId)
             {
-                const std::unique_ptr<boost::value_factory<T>> factory;
+                BOOST_STATIC_ASSERT_MSG(
+                        (std::is_base_of<MLRegTraining, T>::value),
+                        "A registered training must be a descendant of MLRegTraining."
+                        );
+                MLReg<Val>::AbstractFactory factory = boost::factory<std::unique_ptr<T>>();
+                this->trainings.insert(std::make_pair(trainingId,factory));
 
-                this->trainings.insert(factory);
             }
     }
 }
