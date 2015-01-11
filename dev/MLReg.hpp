@@ -11,6 +11,10 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/multi_array.hpp>
+#include <boost/serialization/split_member.hpp>
+#include <boost/serialization/base_object.hpp>
+#include <boost/serialization/nvp.hpp>
+#include <boost/serialization/map.hpp>
 #include "Classifier.hpp"
 
 namespace faif {
@@ -35,7 +39,12 @@ namespace faif {
                     class MLRegTraining;
 
                     typedef std::string DomainId;
-                    typedef boost::multi_array<double, 2> NormalizedExamples;
+                    //convenience class
+                    class NormalizedExamples : public boost::multi_array<double ,2>{
+                        public:
+                            int length(int dim){
+                                return this->shape()[dim]; }
+                    };
                     typedef std::unique_ptr< NormalizedExamples> NormalizedExamplesPtr;
                     typedef std::unique_ptr< MLRegTraining> MLRegTrainingPtr;
                     typedef boost::function< MLRegTrainingPtr ()> TrainingFactory;
@@ -53,13 +62,24 @@ namespace faif {
                     virtual void reset();
                     virtual void reset(std::string algorithmId);
 
-                    std::string getTrainingName(){return currentTrainingId;}
+                    template<class Archive>
+                    void save(Archive & ar, const unsigned int /* file_version */) const;
+
+                    template<class Archive>
+                    void load(Archive & ar, const unsigned int /* file_version */);
+
+                    template<class Archive>
+                    void serialize( Archive &ar, const unsigned int file_version ){
+                        boost::serialization::split_member(ar, *this, file_version);
+                    }
+
+                    std::string getTrainingId(){return currentTrainingId;}
 
                     static void registerTraining(std::string algName,TrainingFactory factory);
 
                     AttrIdd getCategory(const ExampleTest& example) const;
 
-                    Beliefs getCategories(const ExampleTest& example) const{Beliefs b; return b;}
+                    Beliefs getCategories(const ExampleTest& example) const;
 
                     /** \brief train classifier */
                     virtual void train(const ExamplesTrain& e) {
@@ -101,16 +121,54 @@ namespace faif {
                     };
                     class Model{
                         public:
-                            NormalizedExamplesPtr normalizeExamples(const ExampleTrain& examples);
-                            Model(MLReg & parent): parent_(&parent){}
+                            typedef int NAttrId;
+                            typedef int CategoryId;
+                            NormalizedExamplesPtr normalizeExamples(const ExampleTrain& examples) const;
+                            AttrIdd classify(const ExampleTest& testEx);
+                            Model(MLReg & parent): parent_(&parent){
+                                mapAttributes();
+                            }
+
+                            Probability calcProbabilityForExample(const ExampleTest& example, AttrIdd cat_val) const;
+
+                            AttrIdd getCategory(const ExampleTest&) const;
+
+                            Beliefs getCategories(const ExampleTest&) const;
                             //infer
                         private:
-                            //normalized <-> output mapping
-                            std::map<AttrIdd, int> mapp;
+                            void mapAttributes();
+                            //initial values -> normalized values mapping
+                            std::map<AttrIdd, NAttrId> NormMap;
                             //trained params
-                            std::vector<double> trainedParams;
+                            std::vector<double> parameters;
                             MLReg * parent_;
                             //Naive : 643 //TODO
+                            /** \brief serialization using boost::serialization */
+                            friend class boost::serialization::access;
+
+                            template<class Archive>
+                            void save(Archive & ar, const unsigned int /* file_version */) const {
+                                /* ar << boost::serialization::make_nvp("Category", data_ ); */
+                                /* ar << boost::serialization::make_nvp("Data", attrData_ ); */
+                            }
+
+                            template<class Archive>
+                            void load(Archive & ar, const unsigned int /* file_version */) {
+                                /* ar >> boost::serialization::make_nvp("Category", data_ ); */
+                                /* typedef std::map<AttrIddSerialize,T> Map; */
+                                /* Map m; */
+                                /* ar >> boost::serialization::make_nvp("Data", m ); */
+                                /* attrData_.clear(); */
+                                /* for(typename Map::const_iterator ii = m.begin(); ii != m.end(); ++ii) { */
+                                /*     //transform from loaded std::pair (with not const key) to stored std::pair is required */
+                                /*     attrData_.insert(typename AttrData::value_type(ii->first, ii->second) ); */
+                                /* } */
+                            }
+
+                            template<class Archive>
+                            void serialize( Archive &ar, const unsigned int file_version ){
+                                /* boost::serialization::split_member(ar, *this, file_version); */
+                            }
                     };
             }; //class MLReg
 
@@ -126,6 +184,7 @@ namespace faif {
             MLReg<Val>::MLReg(const Domains& attr_domains, const AttrDomain& category_domain,std::string trainingId)
             : Classifier<Val>(attr_domains, category_domain)
             {
+                model.reset(new Model(*this));
                 currentTrainingId = trainingId;
                 this->reset(trainingId);
             }
@@ -133,7 +192,8 @@ namespace faif {
         /** clear the learned parameters */
         template<typename Val>
             void MLReg<Val>::reset() {
-                this->reset(currentTrainingId);
+                model.reset(new Model(*this));
+                /* this->reset(currentTrainingId); */
             };
 
         template<typename Val>
@@ -141,14 +201,20 @@ namespace faif {
                 TrainingFactory factory;
                 factory = FactoryManager::getInstance().getFactory(treningId);
                 trainingImpl=factory();
+                model.reset(new Model(*this));
             };
 
         template<typename Val>
             typename MLReg<Val>::AttrIdd
             MLReg<Val>::getCategory(const ExampleTest& example) const {
-                return this->getCategoryIdd("good"); //mockup
-            };
+                return model->getCategory(example);
+        };
 
+        template<typename Val>
+        typename MLReg<Val>::Beliefs
+        MLReg<Val>::getCategories(const ExampleTest& example) const {
+            return model->getCategories(example);
+        }
         /** ostream method */
         template<typename Val>
             void MLReg<Val>::write(std::ostream& os) const {
@@ -190,6 +256,42 @@ namespace faif {
                 this->trainings.insert(std::make_pair(trainingId,factory));
 
             }
+        //////////////////////////////////////////////////////////////////////////////////////////////////
+        // class Model implementation
+        //////////////////////////////////////////////////////////////////////////////////////////////////
+
+        template<typename Val>
+            void MLReg<Val>::Model::mapAttributes() {
+                //TODO
+            }
+        template<typename Val>
+            typename MLReg<Val>::AttrIdd
+            MLReg<Val>::Model::getCategory(const ExampleTest& example) const {
+                if( parameters.empty() )
+                    return AttrDomain::getUnknownId();
+
+                /* AttrIdd cat_val_max = probabl_.begin()->first; //init not important */
+                /* Probability max_prob = -std::numeric_limits<Probability>::max(); */
+                //look the categories and find the max prob of category for given example (compares the log of probability)
+                /* for(typename InternalProbabilities::const_iterator ii = probabl_.begin(); ii != probabl_.end(); ++ii ) { */
+                /*     AttrIdd cat_val = (*ii).first; */
+                /*     Probability prob = calcProbabilityForExample(example, cat_val); */
+                /*     if( prob > max_prob ) { */
+                /*         max_prob = prob; */
+                /*         cat_val_max = cat_val; */
+                /*     } */
+                /* } */
+                /* return cat_val_max; */
+                return parent_->getCategoryIdd("good");
+    }
+
+        template<typename Val>
+        typename MLReg<Val>::Beliefs
+        MLReg<Val>::Model::getCategories(const ExampleTest& example) const {
+            /* return impl_->getCategories(example); */
+            Beliefs b;
+            return b;
+        }
     }
 }
 
