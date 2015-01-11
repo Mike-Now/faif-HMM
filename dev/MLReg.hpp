@@ -1,13 +1,16 @@
+
 #ifndef FAIF_MLReg_HPP
 #define FAIF_MLReg_HPP
 
 #include <string>
 #include <map>
 #include <memory>
+#include <vector>
 #include <boost/functional/factory.hpp>
 #include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/static_assert.hpp>
+#include <boost/multi_array.hpp>
 #include "Classifier.hpp"
 
 namespace faif {
@@ -31,10 +34,15 @@ namespace faif {
 
                     class MLRegTraining;
 
+                    typedef std::string DomainId;
+                    typedef boost::multi_array<double, 2> NormalizedExamples;
+                    typedef std::unique_ptr< NormalizedExamples> NormalizedExamplesPtr;
                     typedef std::unique_ptr< MLRegTraining> MLRegTrainingPtr;
-                    typedef boost::function< MLRegTrainingPtr ()> AbstractFactory;
+                    typedef boost::function< MLRegTrainingPtr ()> TrainingFactory;
                 private:
-                    class TrainingFactory;
+                    class Model;
+                    class FactoryManager;
+                    std::unique_ptr<Model>model;
                     std::unique_ptr<MLRegTraining>trainingImpl;
                     std::string currentTrainingId;
                 public:
@@ -55,7 +63,7 @@ namespace faif {
 
                     /** \brief train classifier */
                     virtual void train(const ExamplesTrain& e) {
-                        trainingImpl->train(e);
+                        /* trainingImpl->train(e); */
                     }
 
                     /** the ostream method */
@@ -63,33 +71,46 @@ namespace faif {
 
                     class MLRegTraining {
                         public:
-                            virtual void train(const ExamplesTrain& e)=0;
+                            virtual void train(NormalizedExamples examples)=0;
                             virtual ~MLRegTraining(){};
                     };
                     class GISTraining : public MLRegTraining{
                         public:
-                            void train(const ExamplesTrain& e){}
+                            virtual void train(NormalizedExamples examples){}
                             ~GISTraining(){}
                     };
                 private:
-                    class TrainingFactory{
+                    class FactoryManager{
                         private:
-                            typedef typename MLReg<Val>::AbstractFactory AbstractFactory;
-                            std::map<std::string,AbstractFactory> trainings;
+                            typedef typename MLReg<Val>::TrainingFactory TrainingFactory;
+                            std::map<std::string,TrainingFactory> trainings;
                         public:
-                            TrainingFactory();
-                            static TrainingFactory& getInstance(){
+                            FactoryManager();
+                            static FactoryManager& getInstance(){
 
-                                static TrainingFactory instance;
+                                static FactoryManager instance;
                                 return instance;
                             }
-                            AbstractFactory getFactory(std::string trainingId);
+                            TrainingFactory getFactory(std::string trainingId);
                             template<class T>
                                 void registerTraining(std::string trainingId);
                         private:
-                            ~TrainingFactory(){}
-                            TrainingFactory(const TrainingFactory&t);
-                            TrainingFactory& operator=(const TrainingFactory&);
+                            ~FactoryManager(){}
+                            FactoryManager(const TrainingFactory&t);
+                            FactoryManager& operator=(const TrainingFactory&);
+                    };
+                    class Model{
+                        public:
+                            NormalizedExamplesPtr normalizeExamples(const ExampleTrain& examples);
+                            Model(MLReg & parent): parent_(&parent){}
+                            //infer
+                        private:
+                            //normalized <-> output mapping
+                            std::map<AttrIdd, int> mapp;
+                            //trained params
+                            std::vector<double> trainedParams;
+                            MLReg * parent_;
+                            //Naive : 643 //TODO
                     };
             }; //class MLReg
 
@@ -117,8 +138,8 @@ namespace faif {
 
         template<typename Val>
             void MLReg<Val>::reset(std::string treningId){
-                AbstractFactory factory;
-                factory = TrainingFactory::getInstance().getFactory(treningId);
+                TrainingFactory factory;
+                factory = FactoryManager::getInstance().getFactory(treningId);
                 trainingImpl=factory();
             };
 
@@ -137,14 +158,14 @@ namespace faif {
         // class TrainingFactory implementation
         //////////////////////////////////////////////////////////////////////////////////////////////////
         template<typename Val>
-            MLReg<Val>::TrainingFactory::TrainingFactory(){
+            MLReg<Val>::FactoryManager::FactoryManager(){
                 registerTraining<MLReg<Val>::GISTraining>("GIS");
             }
         template<typename Val>
-            typename MLReg<Val>::AbstractFactory
-            MLReg<Val>::TrainingFactory::
+            typename MLReg<Val>::TrainingFactory
+            MLReg<Val>::FactoryManager::
             getFactory(std::string trainingId){
-                typename std::map<std::string, AbstractFactory>::iterator it;
+                typename std::map<std::string, TrainingFactory>::iterator it;
                 it = trainings.find(trainingId);
                 if(it != trainings.end())
                 {
@@ -158,14 +179,14 @@ namespace faif {
 
         template<typename Val>
             template<class T>
-            void MLReg<Val>::TrainingFactory::
+            void MLReg<Val>::FactoryManager::
             registerTraining(std::string trainingId)
             {
                 BOOST_STATIC_ASSERT_MSG(
                         (std::is_base_of<MLRegTraining, T>::value),
                         "A registered training must be a descendant of MLRegTraining."
                         );
-                MLReg<Val>::AbstractFactory factory = boost::factory<std::unique_ptr<T>>();
+                MLReg<Val>::TrainingFactory factory = boost::factory<std::unique_ptr<T>>();
                 this->trainings.insert(std::make_pair(trainingId,factory));
 
             }

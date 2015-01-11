@@ -51,7 +51,7 @@ int main() {
     {
         std::cout<<"Mockup test passed!"<<std::endl;
     }
-
+    /* std::cout<<inst.getAttrDomains().front().getId(); */
 	//cross-validation on given set of examples
 	//std::cout << checkCross(ex, 14, inst) << std::endl;
 

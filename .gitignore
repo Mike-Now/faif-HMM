@@ -26,5 +26,6 @@
 *.dblite
 *.swp
 .srclist
+.syntastic
 .syntastic_cpp_config
 tags
