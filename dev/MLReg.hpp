@@ -38,13 +38,8 @@ namespace faif {
 
                     class MLRegTraining;
 
-                    typedef std::string DomainId;
-                    //convenience class
-                    class NormalizedExamples : public boost::multi_array<double ,2>{
-                        public:
-                            int length(int dim){
-                                return this->shape()[dim]; }
-                    };
+                    /* typedef std::string DomainId; */
+                    typedef boost::multi_array<double, 2> NormalizedExamples;
                     typedef std::unique_ptr< NormalizedExamples> NormalizedExamplesPtr;
                     typedef std::unique_ptr< MLRegTraining> MLRegTrainingPtr;
                     typedef boost::function< MLRegTrainingPtr ()> TrainingFactory;
@@ -75,28 +70,27 @@ namespace faif {
 
                     std::string getTrainingId(){return currentTrainingId;}
 
-                    static void registerTraining(std::string algName,TrainingFactory factory);
+                    template<class T>
+                        static void registerTraining(std::string trainingId);
 
                     AttrIdd getCategory(const ExampleTest& example) const;
 
                     Beliefs getCategories(const ExampleTest& example) const;
 
                     /** \brief train classifier */
-                    virtual void train(const ExamplesTrain& e) {
-                        /* trainingImpl->train(e); */
-                    }
+                    virtual void train(const ExamplesTrain& e);
 
                     /** the ostream method */
                     virtual void write(std::ostream& os) const;
 
                     class MLRegTraining {
                         public:
-                            virtual void train(NormalizedExamples examples)=0;
+                            virtual void train(NormalizedExamples& examples)=0;
                             virtual ~MLRegTraining(){};
                     };
                     class GISTraining : public MLRegTraining{
                         public:
-                            virtual void train(NormalizedExamples examples){}
+                            void train(NormalizedExamples& examples);
                             ~GISTraining(){}
                     };
                 private:
@@ -106,10 +100,12 @@ namespace faif {
                             std::map<std::string,TrainingFactory> trainings;
                         public:
                             FactoryManager();
+                            //C++11 threadsafe lazy initialization
                             static FactoryManager& getInstance(){
 
                                 static FactoryManager instance;
                                 return instance;
+
                             }
                             TrainingFactory getFactory(std::string trainingId);
                             template<class T>
@@ -123,7 +119,7 @@ namespace faif {
                         public:
                             typedef int NAttrId;
                             typedef int CategoryId;
-                            NormalizedExamplesPtr normalizeExamples(const ExampleTrain& examples) const;
+                            NormalizedExamplesPtr normalizeExamples(const ExamplesTrain& examples) const;
                             AttrIdd classify(const ExampleTest& testEx);
                             Model(MLReg & parent): parent_(&parent){
                                 mapAttributes();
@@ -189,6 +185,11 @@ namespace faif {
                 this->reset(trainingId);
             }
 
+        template<typename Val>
+            void MLReg<Val>::train(const ExamplesTrain& examples) {
+                NormalizedExamplesPtr ptr = model->normalizeExamples(examples);
+                trainingImpl->train(*ptr);
+            };
         /** clear the learned parameters */
         template<typename Val>
             void MLReg<Val>::reset() {
@@ -215,13 +216,18 @@ namespace faif {
         MLReg<Val>::getCategories(const ExampleTest& example) const {
             return model->getCategories(example);
         }
+        template<typename Val>
+            template<class T>
+            void MLReg<Val>::registerTraining(std::string trainingId){
+                FactoryManager::getInstance().template registerTraining<T>(trainingId);
+            }
         /** ostream method */
         template<typename Val>
             void MLReg<Val>::write(std::ostream& os) const {
             }
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
-        // class TrainingFactory implementation
+        // class FactoryManager implementation
         //////////////////////////////////////////////////////////////////////////////////////////////////
         template<typename Val>
             MLReg<Val>::FactoryManager::FactoryManager(){
@@ -265,6 +271,13 @@ namespace faif {
                 //TODO
             }
         template<typename Val>
+        typename MLReg<Val>::NormalizedExamplesPtr
+        MLReg<Val>::Model::normalizeExamples(const MLReg<Val>::ExamplesTrain& examples)const {
+                //TODO
+                NormalizedExamplesPtr ptr;
+                return ptr;
+            }
+        template<typename Val>
             typename MLReg<Val>::AttrIdd
             MLReg<Val>::Model::getCategory(const ExampleTest& example) const {
                 if( parameters.empty() )
@@ -292,7 +305,14 @@ namespace faif {
             Beliefs b;
             return b;
         }
+
+        //////////////////////////////////////////////////////////////////////////////////////////////////
+        //class MLReg::GISTraining
+        //////////////////////////////////////////////////////////////////////////////////////////////////
+
+        template<typename Val>
+        void MLReg<Val>::GISTraining::train(MLReg<Val>::NormalizedExamples& examples){
+        }
     }
 }
-
 #endif
