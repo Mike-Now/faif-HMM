@@ -17,6 +17,7 @@
 /dev/MlrTest
 /dev/mlr
 /dev/*.o
+/dev/serial
 /install/*
 !/install/DoxyFile
 !/install/Sconscript

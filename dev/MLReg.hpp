@@ -15,7 +15,9 @@
 #include <boost/serialization/base_object.hpp>
 #include <boost/serialization/nvp.hpp>
 #include <boost/serialization/map.hpp>
+#include <boost/serialization/vector.hpp>
 #include "Classifier.hpp"
+#include "boostFix.hpp"
 
 namespace faif {
     namespace ml {
@@ -46,8 +48,8 @@ namespace faif {
                 private:
                     class Model;
                     class FactoryManager;
-                    std::unique_ptr<Model>model;
-                    std::unique_ptr<MLRegTraining>trainingImpl;
+                    std::unique_ptr<Model> model;
+                    std::unique_ptr<MLRegTraining> trainingImpl;
                     std::string currentTrainingId;
                 public:
                     MLReg();
@@ -57,15 +59,26 @@ namespace faif {
                     virtual void reset();
                     virtual void reset(std::string algorithmId);
 
-                    template<class Archive>
-                    void save(Archive & ar, const unsigned int /* file_version */) const;
+                    /*template<class Archive>
+                    void save(Archive & ar, const unsigned int file_version) const {
+                        ar & currentTrainingId;
+                        ar & *model;
+                        ar & *trainingImpl;
+                    }
 
                     template<class Archive>
-                    void load(Archive & ar, const unsigned int /* file_version */);
+                    void load(Archive & ar, const unsigned int ile_version) {
+
+                    }*/
 
                     template<class Archive>
                     void serialize( Archive &ar, const unsigned int file_version ){
-                        boost::serialization::split_member(ar, *this, file_version);
+                        //boost::serialization::split_member(ar, *this, file_version);
+                        boost::serialization::base_object<Classifier<Val> >(*this);
+
+                        ar & currentTrainingId;
+                        ar & model;
+                        ar & trainingImpl;
                     }
 
                     std::string getTrainingId(){return currentTrainingId;}
@@ -84,11 +97,26 @@ namespace faif {
                     virtual void write(std::ostream& os) const;
 
                     class MLRegTraining {
+                        friend class boost::serialization::access;
+
+                        template<class Archive>
+                        void serialize(Archive & ar, const unsigned int version)
+                        {
+
+                        }
+
                         public:
                             virtual void train(NormalizedExamples& examples)=0;
                             virtual ~MLRegTraining(){};
                     };
                     class GISTraining : public MLRegTraining{
+                        friend class boost::serialization::access;
+
+                        template<class Archive>
+                        void serialize(Archive & ar, const unsigned int version)
+                        {
+                            boost::serialization::base_object<Classifier<MLRegTraining> >(*this);
+                        }
                         public:
                             void train(NormalizedExamples& examples);
                             ~GISTraining(){}
@@ -114,6 +142,15 @@ namespace faif {
                             ~FactoryManager(){}
                             FactoryManager(const TrainingFactory&t);
                             FactoryManager& operator=(const TrainingFactory&);
+
+                            friend class boost::serialization::access;
+
+                            template<class Archive>
+                            void serialize( Archive &ar, const unsigned int file_version ){
+                                /* boost::serialization::split_member(ar, *this, file_version); */
+                                ar & trainings;
+                            }
+
                     };
                     class Model{
                         public:
@@ -142,28 +179,31 @@ namespace faif {
                             /** \brief serialization using boost::serialization */
                             friend class boost::serialization::access;
 
-                            template<class Archive>
-                            void save(Archive & ar, const unsigned int /* file_version */) const {
-                                /* ar << boost::serialization::make_nvp("Category", data_ ); */
-                                /* ar << boost::serialization::make_nvp("Data", attrData_ ); */
-                            }
+                            /*template<class Archive>
+                            void save(Archive & ar, const unsigned int file_version ) const {
+                                ar << boost::serialization::make_nvp("Category", data_ );
+                                 ar << boost::serialization::make_nvp("Data", attrData_ );
 
-                            template<class Archive>
-                            void load(Archive & ar, const unsigned int /* file_version */) {
-                                /* ar >> boost::serialization::make_nvp("Category", data_ ); */
-                                /* typedef std::map<AttrIddSerialize,T> Map; */
-                                /* Map m; */
-                                /* ar >> boost::serialization::make_nvp("Data", m ); */
-                                /* attrData_.clear(); */
-                                /* for(typename Map::const_iterator ii = m.begin(); ii != m.end(); ++ii) { */
-                                /*     //transform from loaded std::pair (with not const key) to stored std::pair is required */
-                                /*     attrData_.insert(typename AttrData::value_type(ii->first, ii->second) ); */
-                                /* } */
-                            }
+                            }*/
+
+                            /*template<class Archive>
+                            void load(Archive & ar, const unsigned int file_version) {
+                                 ar >> boost::serialization::make_nvp("Category", data_ );
+                                 typedef std::map<AttrIddSerialize,T> Map;
+                                 Map m;
+                                 ar >> boost::serialization::make_nvp("Data", m );
+                                 attrData_.clear();
+                                 for(typename Map::const_iterator ii = m.begin(); ii != m.end(); ++ii) {
+                                     //transform from loaded std::pair (with not const key) to stored std::pair is required
+                                     attrData_.insert(typename AttrData::value_type(ii->first, ii->second) );
+                                 }
+                            }*/
 
                             template<class Archive>
                             void serialize( Archive &ar, const unsigned int file_version ){
                                 /* boost::serialization::split_member(ar, *this, file_version); */
+                                ar & parameters;
+                                ar & NormMap;
                             }
                     };
             }; //class MLReg
