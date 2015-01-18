@@ -39,9 +39,19 @@ namespace faif {
                     typedef typename Classifier<Val>::ExamplesTrain ExamplesTrain;
 
                     class MLRegTraining;
+                    typedef int NAttrId;
+                    typedef int NCategoryId;
+                    typedef boost::multi_array<double, 2> ParamMatrix;
+                    typedef boost::multi_array<int , 1>IntVec;
 
-                    /* typedef std::string DomainId; */
-                    typedef boost::multi_array<double, 2> NormalizedExamples;
+                    struct NormalizedExamples{
+                        NormalizedExamples(int catN, int attrN){
+                            params.reset(new ParamMatrix(boost::extents[catN][attrN]));
+                            catVector.reset(new IntVec(boost::extents[catN]));
+                        }
+                        std::unique_ptr<ParamMatrix> params;
+                        std::unique_ptr<IntVec>catVector;
+                    };
                     typedef std::unique_ptr< NormalizedExamples> NormalizedExamplesPtr;
                     typedef std::unique_ptr< MLRegTraining> MLRegTrainingPtr;
                     typedef boost::function< MLRegTrainingPtr ()> TrainingFactory;
@@ -154,8 +164,8 @@ namespace faif {
                     };
                     class Model{
                         public:
-                            typedef int NAttrId;
-                            typedef int CategoryId;
+                            /* typedef int NAttrId; */
+                            /* typedef int NCategoryId; */
                             NormalizedExamplesPtr normalizeExamples(const ExamplesTrain& examples) const;
                             AttrIdd classify(const ExampleTest& testEx);
                             Model(MLReg & parent): parent_(&parent){
@@ -176,7 +186,7 @@ namespace faif {
                             std::vector<double> parameters;
 
                             //map between internal cat. indices and category ids(attridd)
-                            std::map<CategoryId, AttrIdd> catMap;
+                            std::map<NCategoryId, AttrIdd> catMap;
                             MLReg * parent_;
                             //Naive : 643 //TODO
                             /** \brief serialization using boost::serialization */
@@ -278,8 +288,7 @@ namespace faif {
             }
         template<typename Val>
             typename MLReg<Val>::TrainingFactory
-            MLReg<Val>::FactoryManager::
-            getFactory(std::string trainingId){
+            MLReg<Val>::FactoryManager::getFactory(std::string trainingId){
                 typename std::map<std::string, TrainingFactory>::iterator it;
                 it = trainings.find(trainingId);
                 if(it != trainings.end())
@@ -334,10 +343,19 @@ namespace faif {
         template<typename Val>
         typename MLReg<Val>::NormalizedExamplesPtr
         MLReg<Val>::Model::normalizeExamples(const MLReg<Val>::ExamplesTrain& examples)const {
-                //TODO
-                NormalizedExamplesPtr ptr;
-                return ptr;
+            int nattrNum = normMap.size();
+            int ncatNum = catMap.size();
+            NormalizedExamplesPtr examplesPtr(new NormalizedExamples(nattrNum,ncatNum));
+
+            typename ExamplesTrain::const_iterator exIt;
+            for( exIt=examples.begin();exIt!=examples.end();exIt++){
+                const ExampleTrain &ex = *exIt;
+                for(typename ExampleTrain::const_iterator i = ex.begin();i!=ex.end();i++)
+                {
+                }
             }
+            return examplesPtr;
+        }
         template<typename Val>
             typename MLReg<Val>::AttrIdd
             MLReg<Val>::Model::getCategory(const ExampleTest& example) const {
@@ -356,27 +374,27 @@ namespace faif {
                 /*     } */
                 /* } */
                 /* return cat_val_max; */
-                CategoryId catId = 0;
+                NCategoryId catId = 0;
                 AttrIdd rCat = catMap.find(catId)->second;
                 return rCat;
-                /* return parent_->getCategoryIdd("good"); */
-    }
+                /* return parent_->getNCategoryIdd("good"); */
+            }
 
         template<typename Val>
-        typename MLReg<Val>::Beliefs
-        MLReg<Val>::Model::getCategories(const ExampleTest& example) const {
-            /* return impl_->getCategories(example); */
-            Beliefs b;
-            return b;
-        }
+            typename MLReg<Val>::Beliefs
+            MLReg<Val>::Model::getCategories(const ExampleTest& example) const {
+                /* return impl_->getCategories(example); */
+                Beliefs b;
+                return b;
+            }
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
         //class MLReg::GISTraining
         //////////////////////////////////////////////////////////////////////////////////////////////////
 
         template<typename Val>
-        void MLReg<Val>::GISTraining::train(MLReg<Val>::NormalizedExamples& examples){
-        }
+            void MLReg<Val>::GISTraining::train(MLReg<Val>::NormalizedExamples& examples){
+            }
     }
 }
 #endif
