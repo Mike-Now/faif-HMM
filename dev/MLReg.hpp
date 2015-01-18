@@ -48,9 +48,22 @@ namespace faif {
                         NormalizedExamples(int catN, int attrN, int exNum){
                             params.reset(new ParamMatrix(boost::extents[exNum][attrN]));
                             std::fill(params->data(),params->data()+params->num_elements(),0);
-                            catVector.reset(new IntVec(boost::extents[catN]));
+                            catVector.reset(new IntVec(boost::extents[exNum]));
                             std::fill(catVector->data(),catVector->data()+catVector->num_elements(),0);
+                            categoriesCount=catN;
                         }
+                        void print(){
+
+                            for(int i=0;i<catVector->shape()[0];i++)
+                            {
+                                std::cout<<"Wektor: ";
+                                for(int j=0;j<params->shape()[1];j++){
+                                    std::cout<<(*params)[i][j]<<" ";
+                                }
+                                std::cout<<"Kat. : "<<(*catVector)[i]<<std::endl;
+                            }
+                        }
+                        int categoriesCount;
                         std::unique_ptr<ParamMatrix> params;
                         std::unique_ptr<IntVec>catVector;
                     };
@@ -118,7 +131,7 @@ namespace faif {
                             }
 
                         public:
-                        virtual void train(NormalizedExamples& examples)=0;
+                        virtual ParamMatrix* train(NormalizedExamples& examples)=0;
                         virtual ~MLRegTraining(){};
                     };
                     class GISTraining : public MLRegTraining{
@@ -130,7 +143,7 @@ namespace faif {
                                 boost::serialization::base_object<Classifier<MLRegTraining> >(*this);
                             }
                         public:
-                        void train(NormalizedExamples& examples);
+                        ParamMatrix* train(NormalizedExamples& examples);
                         ~GISTraining(){}
                     };
                 private:
@@ -166,8 +179,6 @@ namespace faif {
                     };
                     class Model{
                         public:
-                            /* typedef int NAttrId; */
-                            /* typedef int NCategoryId; */
                             NormalizedExamplesPtr normalizeExamples(const ExamplesTrain& examples) const;
                             AttrIdd classify(const ExampleTest& testEx);
                             Model(MLReg & parent): parent_(&parent){
@@ -179,19 +190,20 @@ namespace faif {
                             AttrIdd getCategory(const ExampleTest&) const;
 
                             Beliefs getCategories(const ExampleTest&) const;
+                            void setParameters(ParamMatrix *trainedParams);
                             //infer
                         private:
                             void mapAttributes();
                             //initial values -> normalized values mapping
                             std::map<AttrIdd, NAttrId> normMap;
                             //trained params
-                            std::vector<double> parameters;
+                            std::unique_ptr<ParamMatrix> parameters;
 
                             //map between internal cat. indices and category ids(attridd)
                             std::map<NCategoryId, AttrIdd> catMap;
                             std::map<AttrIdd,NCategoryId> revCatMap;
                             MLReg * parent_;
-                            //Naive : 643 //TODO
+
                             /** \brief serialization using boost::serialization */
                             friend class boost::serialization::access;
 
@@ -244,7 +256,8 @@ namespace faif {
         template<typename Val>
             void MLReg<Val>::train(const ExamplesTrain& examples) {
                 NormalizedExamplesPtr ptr = model->normalizeExamples(examples);
-                trainingImpl->train(*ptr);
+                ParamMatrix * params = trainingImpl->train(*ptr);
+                model->setParameters(params);
             };
         /** clear the learned parameters */
         template<typename Val>
@@ -351,7 +364,6 @@ namespace faif {
                 bool isNominal=(typeid(typename AttrDomain::ValueTag)==typeid(faif::nominal_tag));
                 int nattrNum = normMap.size();
                 int ncatNum = catMap.size();
-                std::cout<<nattrNum<<" "<<ncatNum<<std::endl;
                 int exNum = examples.size();
                 NormalizedExamplesPtr examplesPtr(new NormalizedExamples(ncatNum,nattrNum,exNum));
 
@@ -360,9 +372,9 @@ namespace faif {
                 for( exIt=examples.begin();exIt!=examples.end();exIt++){
 
                     const ExampleTrain &ex = *exIt;
-                    /* AttrIdd catVal = ex.getFeature(); */
-                    /* NCategoryId nCatId = revCatMap.find(catVal)->second; */
-                    /* (*examplesPtr->catVector)[ii]=nCatId; */
+                    AttrIdd catVal = ex.getFeature();
+                    NCategoryId nCatId = revCatMap.find(catVal)->second;
+                    (*examplesPtr->catVector)[ii]=nCatId;
                     for(typename ExampleTrain::const_iterator i = ex.begin();i!=ex.end();i++)
                     {
                         if(isNominal){
@@ -398,7 +410,9 @@ namespace faif {
                 /*     } */
                 /* } */
                 /* return cat_val_max; */
-                NCategoryId catId = 0;
+                NCategoryId catId = -999;
+                if((*parameters)[0][1]==1.0)
+                    catId=0;
                 AttrIdd rCat = catMap.find(catId)->second;
                 return rCat;
                 /* return parent_->getNCategoryIdd("good"); */
@@ -411,13 +425,29 @@ namespace faif {
                 Beliefs b;
                 return b;
             }
+        template<typename Val>
+            void MLReg<Val>::Model::setParameters(ParamMatrix * trainParams){
+                parameters.reset(trainParams);
+            }
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
         //class MLReg::GISTraining
         //////////////////////////////////////////////////////////////////////////////////////////////////
 
         template<typename Val>
-            void MLReg<Val>::GISTraining::train(MLReg<Val>::NormalizedExamples& examples){
+            typename MLReg<Val>::ParamMatrix *MLReg<Val>::GISTraining::train(MLReg<Val>::NormalizedExamples& examples){
+                std::cout<<"GOING STRON"<<std::endl;
+                int catN = examples.categoriesCount;
+                int attrN = examples.params->shape()[1];
+                /* std::cout<<attrN<<" "<<catN<<std::endl; */
+                examples.print();
+                ParamMatrix * trainedParams = new ParamMatrix(boost::extents[catN][attrN]);
+                ParamMatrix & params_=*trainedParams;
+                for(int i=0;i<params_.shape()[1];i++)
+                {
+                    params_[0][i]=1.0;
+                }
+                return trainedParams;
             }
     }
 }
