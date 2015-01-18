@@ -1,7 +1,7 @@
 CC=clang++
-INCLUDE_DIRS=-I${CURDIR}/../src/learning  -I/usr/local/boost_1_57_0
+INCLUDE_DIRS=-I${CURDIR}/../src/learning
 CFLAGS = -Wall -Werror -Wmissing-prototypes $(INCLUDE_DIRS) -std=c++11
-LDFLAGS=-L/usr/local/boost_1_57_0/stage/lib -lboost_system -lboost_serialization
+LDFLAGS=-lboost_system -lboost_serialization
 SOURCES=$(wildcard *.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)
 TARGET= mlr MlrTest

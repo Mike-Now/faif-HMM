@@ -171,9 +171,12 @@ namespace faif {
                         private:
                             void mapAttributes();
                             //initial values -> normalized values mapping
-                            std::map<AttrIdd, NAttrId> NormMap;
+                            std::map<AttrIdd, NAttrId> normMap;
                             //trained params
                             std::vector<double> parameters;
+
+                            //map between internal cat. indices and category ids(attridd)
+                            std::map<CategoryId, AttrIdd> catMap;
                             MLReg * parent_;
                             //Naive : 643 //TODO
                             /** \brief serialization using boost::serialization */
@@ -203,7 +206,7 @@ namespace faif {
                             void serialize( Archive &ar, const unsigned int file_version ){
                                 /* boost::serialization::split_member(ar, *this, file_version); */
                                 ar & parameters;
-                                ar & NormMap;
+                                ar & normMap;
                             }
                     };
             }; //class MLReg
@@ -308,7 +311,25 @@ namespace faif {
 
         template<typename Val>
             void MLReg<Val>::Model::mapAttributes() {
-                //TODO
+                const Domains& attribs = this->parent_->getAttrDomains();
+                NAttrId nAttrIdd=0;
+                for(typename Domains::const_iterator jj = attribs.begin(); jj!= attribs.end();++jj){
+                    const AttrDomain& attr = *jj;
+                    for(typename AttrDomain::const_iterator kk = attr.begin(); kk!= attr.end(); ++kk){
+                        AttrIdd val = AttrDomain::getValueId(kk);
+                        normMap.insert(std::make_pair(val,nAttrIdd));
+                        nAttrIdd+=1;
+                    }
+                }
+
+                nAttrIdd=0;
+                const AttrDomain& category = this->parent_->getCategoryDomain();
+                for(typename AttrDomain::const_iterator ii = category.begin(); ii!=category.end();++ii){
+                    AttrIdd catVal = AttrDomain::getValueId(ii);
+                    catMap.insert(std::make_pair(nAttrIdd,catVal));
+                    nAttrIdd+=1;
+                }
+
             }
         template<typename Val>
         typename MLReg<Val>::NormalizedExamplesPtr
@@ -320,8 +341,8 @@ namespace faif {
         template<typename Val>
             typename MLReg<Val>::AttrIdd
             MLReg<Val>::Model::getCategory(const ExampleTest& example) const {
-                if( parameters.empty() )
-                    return AttrDomain::getUnknownId();
+                /* if( parameters.empty() ) */
+                /*     return AttrDomain::getUnknownId(); */
 
                 /* AttrIdd cat_val_max = probabl_.begin()->first; //init not important */
                 /* Probability max_prob = -std::numeric_limits<Probability>::max(); */
@@ -335,7 +356,10 @@ namespace faif {
                 /*     } */
                 /* } */
                 /* return cat_val_max; */
-                return parent_->getCategoryIdd("good");
+                CategoryId catId = 0;
+                AttrIdd rCat = catMap.find(catId)->second;
+                return rCat;
+                /* return parent_->getCategoryIdd("good"); */
     }
 
         template<typename Val>
