@@ -45,9 +45,11 @@ namespace faif {
                     typedef boost::multi_array<int , 1>IntVec;
 
                     struct NormalizedExamples{
-                        NormalizedExamples(int catN, int attrN){
-                            params.reset(new ParamMatrix(boost::extents[catN][attrN]));
+                        NormalizedExamples(int catN, int attrN, int exNum){
+                            params.reset(new ParamMatrix(boost::extents[exNum][attrN]));
+                            std::fill(params->data(),params->data()+params->num_elements(),0);
                             catVector.reset(new IntVec(boost::extents[catN]));
+                            std::fill(catVector->data(),catVector->data()+catVector->num_elements(),0);
                         }
                         std::unique_ptr<ParamMatrix> params;
                         std::unique_ptr<IntVec>catVector;
@@ -70,26 +72,26 @@ namespace faif {
                     virtual void reset(std::string algorithmId);
 
                     /*template<class Archive>
-                    void save(Archive & ar, const unsigned int file_version) const {
-                        ar & currentTrainingId;
-                        ar & *model;
-                        ar & *trainingImpl;
-                    }
+                      void save(Archive & ar, const unsigned int file_version) const {
+                      ar & currentTrainingId;
+                      ar & *model;
+                      ar & *trainingImpl;
+                      }
+
+                      template<class Archive>
+                      void load(Archive & ar, const unsigned int ile_version) {
+
+                      }*/
 
                     template<class Archive>
-                    void load(Archive & ar, const unsigned int ile_version) {
+                        void serialize( Archive &ar, const unsigned int file_version ){
+                            //boost::serialization::split_member(ar, *this, file_version);
+                            boost::serialization::base_object<Classifier<Val> >(*this);
 
-                    }*/
-
-                    template<class Archive>
-                    void serialize( Archive &ar, const unsigned int file_version ){
-                        //boost::serialization::split_member(ar, *this, file_version);
-                        boost::serialization::base_object<Classifier<Val> >(*this);
-
-                        ar & currentTrainingId;
-                        ar & model;
-                        ar & trainingImpl;
-                    }
+                            ar & currentTrainingId;
+                            ar & model;
+                            ar & trainingImpl;
+                        }
 
                     std::string getTrainingId(){return currentTrainingId;}
 
@@ -110,26 +112,26 @@ namespace faif {
                         friend class boost::serialization::access;
 
                         template<class Archive>
-                        void serialize(Archive & ar, const unsigned int version)
-                        {
+                            void serialize(Archive & ar, const unsigned int version)
+                            {
 
-                        }
+                            }
 
                         public:
-                            virtual void train(NormalizedExamples& examples)=0;
-                            virtual ~MLRegTraining(){};
+                        virtual void train(NormalizedExamples& examples)=0;
+                        virtual ~MLRegTraining(){};
                     };
                     class GISTraining : public MLRegTraining{
                         friend class boost::serialization::access;
 
                         template<class Archive>
-                        void serialize(Archive & ar, const unsigned int version)
-                        {
-                            boost::serialization::base_object<Classifier<MLRegTraining> >(*this);
-                        }
+                            void serialize(Archive & ar, const unsigned int version)
+                            {
+                                boost::serialization::base_object<Classifier<MLRegTraining> >(*this);
+                            }
                         public:
-                            void train(NormalizedExamples& examples);
-                            ~GISTraining(){}
+                        void train(NormalizedExamples& examples);
+                        ~GISTraining(){}
                     };
                 private:
                     class FactoryManager{
@@ -156,10 +158,10 @@ namespace faif {
                             friend class boost::serialization::access;
 
                             template<class Archive>
-                            void serialize( Archive &ar, const unsigned int file_version ){
-                                /* boost::serialization::split_member(ar, *this, file_version); */
-                                ar & trainings;
-                            }
+                                void serialize( Archive &ar, const unsigned int file_version ){
+                                    /* boost::serialization::split_member(ar, *this, file_version); */
+                                    ar & trainings;
+                                }
 
                     };
                     class Model{
@@ -187,37 +189,38 @@ namespace faif {
 
                             //map between internal cat. indices and category ids(attridd)
                             std::map<NCategoryId, AttrIdd> catMap;
+                            std::map<AttrIdd,NCategoryId> revCatMap;
                             MLReg * parent_;
                             //Naive : 643 //TODO
                             /** \brief serialization using boost::serialization */
                             friend class boost::serialization::access;
 
                             /*template<class Archive>
-                            void save(Archive & ar, const unsigned int file_version ) const {
-                                ar << boost::serialization::make_nvp("Category", data_ );
-                                 ar << boost::serialization::make_nvp("Data", attrData_ );
+                              void save(Archive & ar, const unsigned int file_version ) const {
+                              ar << boost::serialization::make_nvp("Category", data_ );
+                              ar << boost::serialization::make_nvp("Data", attrData_ );
 
-                            }*/
+                              }*/
 
                             /*template<class Archive>
-                            void load(Archive & ar, const unsigned int file_version) {
-                                 ar >> boost::serialization::make_nvp("Category", data_ );
-                                 typedef std::map<AttrIddSerialize,T> Map;
-                                 Map m;
-                                 ar >> boost::serialization::make_nvp("Data", m );
-                                 attrData_.clear();
-                                 for(typename Map::const_iterator ii = m.begin(); ii != m.end(); ++ii) {
-                                     //transform from loaded std::pair (with not const key) to stored std::pair is required
-                                     attrData_.insert(typename AttrData::value_type(ii->first, ii->second) );
-                                 }
+                              void load(Archive & ar, const unsigned int file_version) {
+                              ar >> boost::serialization::make_nvp("Category", data_ );
+                              typedef std::map<AttrIddSerialize,T> Map;
+                              Map m;
+                              ar >> boost::serialization::make_nvp("Data", m );
+                              attrData_.clear();
+                              for(typename Map::const_iterator ii = m.begin(); ii != m.end(); ++ii) {
+                            //transform from loaded std::pair (with not const key) to stored std::pair is required
+                            attrData_.insert(typename AttrData::value_type(ii->first, ii->second) );
+                            }
                             }*/
 
                             template<class Archive>
-                            void serialize( Archive &ar, const unsigned int file_version ){
-                                /* boost::serialization::split_member(ar, *this, file_version); */
-                                ar & parameters;
-                                ar & normMap;
-                            }
+                                void serialize( Archive &ar, const unsigned int file_version ){
+                                    /* boost::serialization::split_member(ar, *this, file_version); */
+                                    ar & parameters;
+                                    ar & normMap;
+                                }
                     };
             }; //class MLReg
 
@@ -262,13 +265,13 @@ namespace faif {
             typename MLReg<Val>::AttrIdd
             MLReg<Val>::getCategory(const ExampleTest& example) const {
                 return model->getCategory(example);
-        };
+            };
 
         template<typename Val>
-        typename MLReg<Val>::Beliefs
-        MLReg<Val>::getCategories(const ExampleTest& example) const {
-            return model->getCategories(example);
-        }
+            typename MLReg<Val>::Beliefs
+            MLReg<Val>::getCategories(const ExampleTest& example) const {
+                return model->getCategories(example);
+            }
         template<typename Val>
             template<class T>
             void MLReg<Val>::registerTraining(std::string trainingId){
@@ -331,31 +334,52 @@ namespace faif {
                     }
                 }
 
-                nAttrIdd=0;
+                NCategoryId nCatId = 0;
                 const AttrDomain& category = this->parent_->getCategoryDomain();
                 for(typename AttrDomain::const_iterator ii = category.begin(); ii!=category.end();++ii){
-                    AttrIdd catVal = AttrDomain::getValueId(ii);
-                    catMap.insert(std::make_pair(nAttrIdd,catVal));
-                    nAttrIdd+=1;
+                    AttrIdd catId = AttrDomain::getValueId(ii);
+                    catMap.insert(std::make_pair(nCatId,catId));
+                    revCatMap.insert(std::make_pair(catId,nCatId));
+                    nCatId++;
                 }
 
             }
         template<typename Val>
-        typename MLReg<Val>::NormalizedExamplesPtr
-        MLReg<Val>::Model::normalizeExamples(const MLReg<Val>::ExamplesTrain& examples)const {
-            int nattrNum = normMap.size();
-            int ncatNum = catMap.size();
-            NormalizedExamplesPtr examplesPtr(new NormalizedExamples(nattrNum,ncatNum));
+            typename MLReg<Val>::NormalizedExamplesPtr
+            MLReg<Val>::Model::normalizeExamples(const MLReg<Val>::ExamplesTrain& examples)const {
+                //ugly type dispatch
+                bool isNominal=(typeid(typename AttrDomain::ValueTag)==typeid(faif::nominal_tag));
+                int nattrNum = normMap.size();
+                int ncatNum = catMap.size();
+                std::cout<<nattrNum<<" "<<ncatNum<<std::endl;
+                int exNum = examples.size();
+                NormalizedExamplesPtr examplesPtr(new NormalizedExamples(ncatNum,nattrNum,exNum));
 
-            typename ExamplesTrain::const_iterator exIt;
-            for( exIt=examples.begin();exIt!=examples.end();exIt++){
-                const ExampleTrain &ex = *exIt;
-                for(typename ExampleTrain::const_iterator i = ex.begin();i!=ex.end();i++)
-                {
+                typename ExamplesTrain::const_iterator exIt;
+                int ii=0;
+                for( exIt=examples.begin();exIt!=examples.end();exIt++){
+
+                    const ExampleTrain &ex = *exIt;
+                    /* AttrIdd catVal = ex.getFeature(); */
+                    /* NCategoryId nCatId = revCatMap.find(catVal)->second; */
+                    /* (*examplesPtr->catVector)[ii]=nCatId; */
+                    for(typename ExampleTrain::const_iterator i = ex.begin();i!=ex.end();i++)
+                    {
+                        if(isNominal){
+                            AttrIdd trnValue = *i;
+                            NAttrId nValId = normMap.find(trnValue)->second;
+                            (*examplesPtr->params)[ii][nValId]=1.0;
+
+                        }else{  //assume real values
+                            /* double trnValue = static_cast<double>(**i); */
+                            /* (*examplesPtr->params)[ii][nValId]=trnValue; */
+                        }
+
+                    }
+                    ii++;
                 }
+                return examplesPtr;
             }
-            return examplesPtr;
-        }
         template<typename Val>
             typename MLReg<Val>::AttrIdd
             MLReg<Val>::Model::getCategory(const ExampleTest& example) const {
