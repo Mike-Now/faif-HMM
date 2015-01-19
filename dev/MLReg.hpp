@@ -6,6 +6,7 @@
 #include <map>
 #include <memory>
 #include <vector>
+#include <cmath>
 #include <boost/functional/factory.hpp>
 #include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
@@ -416,7 +417,25 @@ namespace faif {
             MLReg<Val>::Model::calcProbabilityForExample(const NormTestExample& ex, const NCategoryId nCatId) const
             {
 
-                return -999;
+                double denominator= 0;
+                for(int i=0;i<parameters->shape()[0];i++){
+                    double power=0;
+                    for(int j=0;j<ex.shape()[0];j++){
+                        double beta = (*parameters)[i][j];
+                        double attrVal = ex[j];
+                        power+=beta*attrVal;
+                    }
+
+                    denominator+=std::exp(power);
+                }
+                double power=0;
+                for(int j=0;j<ex.shape()[0];j++){
+                    double beta = (*parameters)[nCatId][j];
+                    double attrVal = ex[j];
+                    power+=beta*attrVal;
+                }
+                double numerator = std::exp(power);
+                return numerator/denominator;
             }
         template<typename Val>
             typename MLReg<Val>::AttrIdd
