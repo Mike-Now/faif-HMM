@@ -43,6 +43,7 @@ namespace faif {
                     typedef int NAttrId;
                     typedef int NCategoryId;
                     typedef boost::multi_array<double, 2> ParamMatrix;
+                    typedef boost::multi_array<double, 1> ParamVector;
                     typedef boost::multi_array<int , 1>IntVec;
 
                     struct NormTrainingExamples{
@@ -157,6 +158,7 @@ namespace faif {
                                 boost::serialization::base_object<Classifier<MLRegTraining> >(*this);
                             }
                         public:
+                        ParamVector calcChange(NormTrainingExamples &examples);
                         ParamMatrix* train(NormTrainingExamples& examples);
                         ~GISTraining(){}
                     };
@@ -499,14 +501,38 @@ namespace faif {
                 int catN = examples.categoriesCount;
                 int attrN = examples.params->shape()[1];
                 /* std::cout<<attrN<<" "<<catN<<std::endl; */
+
                 examples.print();
                 ParamMatrix * trainedParams = new ParamMatrix(boost::extents[catN][attrN]);
-                ParamMatrix & params_=*trainedParams;
-                for(int i=0;i<params_.shape()[1];i++)
+                ParamMatrix & params=*trainedParams;
+                for(int i=0;i<params.shape()[1];i++)
                 {
-                    params_[0][i]=1.0;
+                    params[0][i]=1.0;
                 }
+
+                double tol=9999;
+                while(tol>0.001){
+                tol=0;
+                //iterate for every category
+                    for(int i=0;i<catN;i++){
+                        ParamVector iterVec = calcChange(examples);
+                        //iterate for every attr weight
+                        for(int j=0;j<attrN;j++){
+                            params[i][j]-=iterVec[j];
+                            if(iterVec[j]>tol) tol=iterVec[j];
+                        }
+                    }
+
+                }
+                std::fill(params.data(),params.data()+params.num_elements(),0);
                 return trainedParams;
+            }
+        template<typename Val>
+            typename MLReg<Val>::ParamVector
+            MLReg<Val>::GISTraining::calcChange(MLReg<Val>::NormTrainingExamples& examples){
+                ParamVector p(boost::extents[examples.params->shape()[1]]);
+                return p;
+
             }
     }
 }
