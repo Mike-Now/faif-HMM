@@ -506,7 +506,7 @@ namespace faif {
                     }
 
                 }
-                bestCatId=0;
+
                 AttrIdd rCat = catMap.find(bestCatId)->second;
                 return rCat;
             }
@@ -533,7 +533,7 @@ namespace faif {
                 int catN = examples.categoriesCount;
                 int attrN = examples[0].size();
 
-                examples.print();
+                /* examples.print(); */
                 Matrix * trainedParams = new Matrix(catN,attrN);
                 Matrix & params=*trainedParams;
                 /* for(int i=0;i<params.size2();i++) */
@@ -542,21 +542,28 @@ namespace faif {
                 /* } */
 
                 double learningRate=1;
-                double tol=9999;
-                while(tol>0.0000001){
-                    tol=0;
+                int maxIter=100;
+                int iter=0;
+                /* double tol=1e-5; */
+                bool converged=false;
+                while(iter<maxIter && !converged){
                     //iterate for every category
                     for(NCategoryId i=0;i<catN;i++){
                         Vector iterVec = calcChange(examples,params,i);
                         //iterate for every attr weight
+                        /* itervec.print(); */
+                        double hDelta=0;
                         for(NAttrId j=0;j<attrN;j++){
                             params[i][j]-=learningRate*iterVec[j];
-                            if(iterVec[j]>tol) tol=iterVec[j];
+                            if(abs(iterVec[j])>hDelta) hDelta=iterVec[j];
                         }
+                        /* if(hDelta<=tol) converged=true; */
                     }
+                    iter++;
 
                 }
-                params.print();
+                /* std::cout<<"ITER"<<iter<<std::endl; */
+                /* params.print(); */
                 return trainedParams;
             }
         template<typename Val>
@@ -580,7 +587,8 @@ namespace faif {
                 }
                 /* delta.print(); */
                 for(int i=0;i<delta.size();i++){
-                    delta[i]*=-1/exNum;
+                    /* delta[i]*=-1/exNum; */
+                    delta[i]=delta[i]*-1/exNum;
                 }
                 return delta;
 
