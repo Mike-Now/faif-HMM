@@ -1,6 +1,8 @@
 #include <iostream>
 #include <Validator.hpp>
 #include "MLReg.hpp"
+#define BOOST_CHECK(stuff) \
+    std::cout<<(stuff)
 
 using namespace std;
 using namespace faif;
@@ -43,13 +45,12 @@ int main() {
 
     inst.train( ex );  //train
 
-	string ET[] = { "overcast", "hot", "high", "weak"}; ExampleTest et = createExample( ET, ET + 4, inst);
+    string ET[] = { "sunny", "hot", "high", "weak"};   ExampleTest et = createExample( ET, ET + 4, inst);
 
 	//the classifier shoulde return the 'good' category
     std::cout << ( inst.getCategory(et) == inst.getCategoryIdd("good") ) << std::endl; //true
 
 	//cross-validation on given set of examples
 	std::cout << checkCross(ex, 14, inst) << std::endl;
-
     return 0;
 }

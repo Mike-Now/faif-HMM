@@ -320,7 +320,6 @@ namespace faif {
             Probability
             MLReg<Val>::calcSoftMax(const NormExample& ex, const NCategoryId nCatId,const Matrix &parameters)
             {
-
                 double power=0;
                 for(int j=0;j<ex.size();j++){
                     double beta = parameters[nCatId][j];
@@ -332,15 +331,15 @@ namespace faif {
                 double denominator= 0;
                 for (int c=0;c<parameters.size1();c++){
 
-                        double power=0;
-                        for(int j=0;j<ex.size();j++){
+                    double power=0;
+                    for(int j=0;j<ex.size();j++){
 
-                            double beta = parameters[c][j];
-                            double attrVal = ex[j];
-                            power+=beta*attrVal;
-                        }
+                        double beta = parameters[c][j];
+                        double attrVal = ex[j];
+                        power+=beta*attrVal;
+                    }
 
-                        denominator+=std::exp(power);
+                    denominator+=std::exp(power);
                 }
                 return numerator/denominator;
             }
@@ -506,7 +505,7 @@ namespace faif {
                     }
 
                 }
-
+                if(bestCatId == 1) std::cout<<"WOWDWDAWDWADWAD"<<std::endl;
                 AttrIdd rCat = catMap.find(bestCatId)->second;
                 return rCat;
             }
@@ -536,30 +535,28 @@ namespace faif {
                 /* examples.print(); */
                 Matrix * trainedParams = new Matrix(catN,attrN);
                 Matrix & params=*trainedParams;
-                /* for(int i=0;i<params.size2();i++) */
-                /* { */
-                /*     params[0][i]=1.0; */
-                /* } */
 
                 double learningRate=1;
-                int maxIter=100;
+                int maxIter=2000;
                 int iter=0;
-                /* double tol=1e-5; */
+                double tol=1e-5;
                 bool converged=false;
                 while(iter<maxIter && !converged){
+                    double hDelta=0;
                     //iterate for every category
-                    for(NCategoryId i=0;i<catN;i++){
+                    for(NCategoryId i=1;i<catN;i++){
                         Vector iterVec = calcChange(examples,params,i);
                         //iterate for every attr weight
-                        /* itervec.print(); */
-                        double hDelta=0;
+                        /* iterVec.print(); */
                         for(NAttrId j=0;j<attrN;j++){
-                            params[i][j]-=learningRate*iterVec[j];
-                            if(abs(iterVec[j])>hDelta) hDelta=iterVec[j];
+                            params[i][j]-=(learningRate*iterVec[j]);
+                            if(abs(iterVec[j])>tol) {hDelta=abs(iterVec[j]);
+                            }
                         }
-                        /* if(hDelta<=tol) converged=true; */
                     }
                     iter++;
+                    /* std::cout<<"HDELTA"<<hDelta<<std::endl; */
+                    /* if(hDelta<=tol) converged=true; */
 
                 }
                 /* std::cout<<"ITER"<<iter<<std::endl; */
@@ -575,7 +572,7 @@ namespace faif {
                 int exNum = examples.size();
                 Vector delta(attrNum);
                 for(typename NormExamples::iterator it=examples.begin();it!=examples.end();it++){
-                    double indicatorVal=0;
+                    double indicatorVal=0.0;
                     NCategoryId iCatId = it->category;
                     if(iCatId == catId) indicatorVal=1.0;
                     Probability softMaxVal = calcSoftMax(*it,iCatId,parameters);
