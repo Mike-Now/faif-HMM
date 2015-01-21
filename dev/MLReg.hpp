@@ -68,7 +68,7 @@ namespace faif {
                         int size() const {return this->shape()[0];}
                         void print(){
                             std::cout<<"Wektor: ";
-                            for(int i=0;i<this->shape()[0];i++){
+                            for(int i=0;i<size();i++){
                                 std::cout<<(*this)[i]<<" ";
                             }
                             if(category!=-1)
@@ -500,7 +500,7 @@ namespace faif {
                 examples.print();
                 Matrix * trainedParams = new Matrix(catN,attrN);
                 Matrix & params=*trainedParams;
-                for(int i=0;i<params.shape()[1];i++)
+                for(int i=0;i<params.size2();i++)
                 {
                     params[0][i]=1.0;
                 }
