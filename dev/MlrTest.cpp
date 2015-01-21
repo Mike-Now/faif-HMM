@@ -4,15 +4,26 @@
 #include <fstream>
 
 #include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 
 int main(){
-	//std::ofstream ofs("serial");
+	faif::ml::MLReg<faif::ValueNominal<std::string> > test;
+	faif::ml::MLReg<faif::ValueNominal<std::string> > test2;
 
-	//boost::archive::text_oarchive oa(ofs);
+	{
+		std::ofstream ofs("serial");
 
-	//faif::ml::MLReg<faif::ValueNominal<std::string> > test;
+		boost::archive::text_oarchive oa(ofs);
 
-	//oa << test;
+		oa << test;
+	}
+	{
+		std::ifstream ifs("serial");
+
+		boost::archive::text_iarchive ia(ifs);
+
+		ia >> test2;
+	}
 
     std::cout<<"All tests for Multinomial Logistic Regression Classifier passed."<<std::endl;
 

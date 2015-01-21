@@ -1,7 +1,7 @@
 
 #ifndef FAIF_MLReg_HPP
 #define FAIF_MLReg_HPP
-
+#include <iostream>
 #include <string>
 #include <map>
 #include <memory>
@@ -129,26 +129,37 @@ namespace faif {
                     virtual void reset();
                     virtual void reset(std::string algorithmId);
 
-                    /*template<class Archive>
-                      void save(Archive & ar, const unsigned int file_version) const {
-                      ar & currentTrainingId;
-                      ar & *model;
-                      ar & *trainingImpl;
-                      }
-
-                      template<class Archive>
-                      void load(Archive & ar, const unsigned int ile_version) {
-
-                      }*/
-
                     template<class Archive>
-                        void serialize( Archive &ar, const unsigned int file_version ){
-                            //boost::serialization::split_member(ar, *this, file_version);
+                        void save(Archive & ar, const unsigned int file_version) const {
                             boost::serialization::base_object<Classifier<Val> >(*this);
 
                             ar & currentTrainingId;
                             ar & model;
                             ar & trainingImpl;
+                        }
+
+                      template<class Archive>
+                      void load(Archive & ar, const unsigned int ile_version) {
+                            boost::serialization::base_object<Classifier<Val> >(*this);
+
+                            ar & currentTrainingId;
+                            ar & model;
+                            ar & trainingImpl;
+
+                            if(model) {
+                                model->parent_ = this;
+                                model->mapAttributes();
+                            }
+                      }
+
+                    template<class Archive>
+                        void serialize( Archive &ar, const unsigned int file_version ){
+                            boost::serialization::split_member(ar, *this, file_version);
+                            /*boost::serialization::base_object<Classifier<Val> >(*this);
+
+                            ar & currentTrainingId;
+                            ar & model;
+                            ar & trainingImpl;*/
                         }
 
                     std::string getTrainingId(){return currentTrainingId;}
@@ -231,6 +242,8 @@ namespace faif {
                             NormExample normalizeTestExample(const ExampleTest& example)const;
                             NormExamplesPtr normalizeExamples(const ExamplesTrain& examples) const;
                             AttrIdd classify(const ExampleTest& testEx);
+                            Model() {
+                            }
                             Model(MLReg & parent): parent_(&parent){
                                 mapAttributes();
                             }
@@ -254,6 +267,7 @@ namespace faif {
 
                             /** \brief serialization using boost::serialization */
                             friend class boost::serialization::access;
+                            friend class MLReg;
 
                             /*template<class Archive>
                               void save(Archive & ar, const unsigned int file_version ) const {
@@ -280,6 +294,8 @@ namespace faif {
                                     /* boost::serialization::split_member(ar, *this, file_version); */
                                     ar & parameters;
                                     ar & normMap;
+                                    ar & catMap;
+                                    ar & revCatMap;
                                 }
                     };
             }; //class MLReg
