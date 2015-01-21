@@ -138,8 +138,8 @@ namespace faif {
                             ar & trainingImpl;
                         }
 
-                      template<class Archive>
-                      void load(Archive & ar, const unsigned int ile_version) {
+                    template<class Archive>
+                        void load(Archive & ar, const unsigned int ile_version) {
                             boost::serialization::base_object<Classifier<Val> >(*this);
 
                             ar & currentTrainingId;
@@ -150,16 +150,16 @@ namespace faif {
                                 model->parent_ = this;
                                 model->mapAttributes();
                             }
-                      }
+                        }
 
                     template<class Archive>
                         void serialize( Archive &ar, const unsigned int file_version ){
                             boost::serialization::split_member(ar, *this, file_version);
                             /*boost::serialization::base_object<Classifier<Val> >(*this);
 
-                            ar & currentTrainingId;
-                            ar & model;
-                            ar & trainingImpl;*/
+                              ar & currentTrainingId;
+                              ar & model;
+                              ar & trainingImpl;*/
                         }
 
                     std::string getTrainingId(){return currentTrainingId;}
@@ -321,20 +321,6 @@ namespace faif {
             MLReg<Val>::calcSoftMax(const NormExample& ex, const NCategoryId nCatId,const Matrix &parameters)
             {
 
-                double denominator= 0;
-                for (int c=0;c<parameters.size1();c++){
-
-                for(int i=0;i<parameters.size2();i++){
-                    double power=0;
-                    for(int j=0;j<ex.size();j++){
-
-                        double beta = parameters[c][j];
-                        double attrVal = ex[j];
-                        power+=beta*attrVal;
-                    }
-
-                    denominator+=std::exp(power);
-                }}
                 double power=0;
                 for(int j=0;j<ex.size();j++){
                     double beta = parameters[nCatId][j];
@@ -342,6 +328,20 @@ namespace faif {
                     power+=beta*attrVal;
                 }
                 double numerator = std::exp(power);
+
+                double denominator= 0;
+                for (int c=0;c<parameters.size1();c++){
+
+                        double power=0;
+                        for(int j=0;j<ex.size();j++){
+
+                            double beta = parameters[c][j];
+                            double attrVal = ex[j];
+                            power+=beta*attrVal;
+                        }
+
+                        denominator+=std::exp(power);
+                }
                 return numerator/denominator;
             }
 
@@ -506,6 +506,7 @@ namespace faif {
                     }
 
                 }
+                std::cout<<"max prob"<<maxProb<<std::endl;;
 
                 AttrIdd rCat = catMap.find(bestCatId)->second;
                 return rCat;
