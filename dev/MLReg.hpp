@@ -506,7 +506,6 @@ namespace faif {
                     }
 
                 }
-                std::cout<<"max prob"<<maxProb<<std::endl;;
 
                 AttrIdd rCat = catMap.find(bestCatId)->second;
                 return rCat;

@@ -43,17 +43,13 @@ int main() {
 
     inst.train( ex );  //train
 
-    string ET[] = { "overcast", "hot", "high", "weak"}; ExampleTest et = createExample( ET, ET + 4,inst);
+	string ET[] = { "overcast", "hot", "high", "weak"}; ExampleTest et = createExample( ET, ET + 4, inst);
 
-    //the classifier shoulde return the 'good' category
+	//the classifier shoulde return the 'good' category
+    std::cout << ( inst.getCategory(et) == inst.getCategoryIdd("good") ) << std::endl; //true
 
-    if(inst.getCategory(et) == inst.getCategoryIdd("good") )
-    {
-        std::cout<<"Mockup test passed!"<<std::endl;
-    }
-
-    //cross-validation on given set of examples
-    std::cout <<checkCross(ex, 14, inst) << std::endl;
+	//cross-validation on given set of examples
+	std::cout << checkCross(ex, 14, inst) << std::endl;
 
     return 0;
 }
