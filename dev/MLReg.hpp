@@ -47,12 +47,29 @@ namespace faif {
                         Matrix(int n,int m): boost::multi_array<double,2>(boost::extents[n][m]){
                             std::fill(this->data(),this->data()+this->num_elements(),0);
                         }
+                        void print(){
+                            std::cout<<"Macierz:"<<std::endl;
+                            for(int i=0;i<size1();i++){
+                                for(int j=0;j<size2();j++){
+                                    std::cout<<(*this)[i][j]<<" ";
+                                }
+                                std::cout<<std::endl;
+                            }
+                        }
                         int size1() const {return this->shape()[0];}
                         int size2() const {return this->shape()[1];}
                     };
                     struct Vector: boost::multi_array<double ,1>{
                         Vector(int n): boost::multi_array<double,1>(boost::extents[n]){
                             std::fill(this->data(),this->data()+this->num_elements(),0);
+                        }
+                        void print(){
+                            std::cout<<"Wektor:"<<std::endl;
+                            for(int i=0;i<size();i++){
+                                std::cout<<(*this)[i]<<" ";
+                            }
+                            std::cout<<std::endl;
+
                         }
                         int size(){return this->shape()[0];}
                     };
@@ -289,16 +306,19 @@ namespace faif {
             {
 
                 double denominator= 0;
-                for(int i=0;i<parameters.size1();i++){
+                for (int c=0;c<parameters.size1();c++){
+
+                for(int i=0;i<parameters.size2();i++){
                     double power=0;
                     for(int j=0;j<ex.size();j++){
-                        double beta = parameters[i][j];
+
+                        double beta = parameters[c][j];
                         double attrVal = ex[j];
                         power+=beta*attrVal;
                     }
 
                     denominator+=std::exp(power);
-                }
+                }}
                 double power=0;
                 for(int j=0;j<ex.size();j++){
                     double beta = parameters[nCatId][j];
@@ -500,27 +520,27 @@ namespace faif {
                 examples.print();
                 Matrix * trainedParams = new Matrix(catN,attrN);
                 Matrix & params=*trainedParams;
-                for(int i=0;i<params.size2();i++)
-                {
-                    params[0][i]=1.0;
-                }
-
-                /* double learningRate=1; */
-                /* double tol=9999; */
-                /* while(tol>0.001){ */
-                /*     tol=0; */
-                /*     //iterate for every category */
-                /*     for(NCategoryId i=0;i<catN;i++){ */
-                /*         Vector iterVec = calcChange(examples,params,i); */
-
-                /*         //iterate for every attr weight */
-                /*         for(NAttrId j=0;j<attrN;j++){ */
-                /*             params[i][j]-=learningRate*iterVec[j]; */
-                /*             if(iterVec[j]>tol) tol=iterVec[j]; */
-                /*         } */
-                /*     } */
-
+                /* for(int i=0;i<params.size2();i++) */
+                /* { */
+                /*     params[0][i]=1.0; */
                 /* } */
+
+                double learningRate=1;
+                double tol=9999;
+                while(tol>0.0000001){
+                    tol=0;
+                    //iterate for every category
+                    for(NCategoryId i=0;i<catN;i++){
+                        Vector iterVec = calcChange(examples,params,i);
+                        //iterate for every attr weight
+                        for(NAttrId j=0;j<attrN;j++){
+                            params[i][j]-=learningRate*iterVec[j];
+                            if(iterVec[j]>tol) tol=iterVec[j];
+                        }
+                    }
+
+                }
+                params.print();
                 return trainedParams;
             }
         template<typename Val>
@@ -536,12 +556,13 @@ namespace faif {
                     NCategoryId iCatId = it->category;
                     if(iCatId == catId) indicatorVal=1.0;
                     Probability softMaxVal = calcSoftMax(*it,iCatId,parameters);
-                    double innerVal=indicatorVal-softMaxVal;;
-                    for(int i=0;delta.size();i++)
+                    double innerVal=indicatorVal-softMaxVal;
+                    for(int i=0;i<delta.size();i++)
                     {
                         delta[i]+=(*it)[i]*innerVal;
                     }
                 }
+                /* delta.print(); */
                 for(int i=0;i<delta.size();i++){
                     delta[i]*=-1/exNum;
                 }
