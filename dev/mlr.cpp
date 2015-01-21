@@ -23,7 +23,7 @@ int main() {
 	string A4[] = {"strong", "weak"};             attribs.push_back( createDomain("wind", A4, A4 + 2) );
 
 	string C[] = {"good","bad"}; AttrDomain cat = createDomain("", C, C+2);
-	MLR inst( attribs, cat,"GIS" ); //create the 'empty' classifier
+    MLR inst( attribs, cat,"BGD" ); //empty classifier with Batch Gradient Descent learning algorithm
 
 	ExamplesTrain ex;
 	string E01[] = { "sunny", "hot", "high", "weak"};         ex.push_back( createExample( E01, E01 + 4, "bad", inst ) );
