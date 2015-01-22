@@ -13,10 +13,12 @@
 #include <sstream>
 #include <cassert>
 #include <fstream>
+#include <cmath>
 
 #define BOOST_TEST_DYN_LINK
-/* #include <boost/test/unit_test.hpp> */
-/* #include <boost/test/floating_point_comparison.hpp> */
+#define BOOST_TEST_MODULE MLR_suite
+#include <boost/test/unit_test.hpp>
+#include <boost/test/floating_point_comparison.hpp>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
@@ -33,9 +35,9 @@
 using namespace std;
 using namespace faif;
 using namespace faif::ml;
-/* using boost::unit_test::test_suite; */
+using boost::unit_test::test_suite;
 
-/* BOOST_AUTO_TEST_SUITE( FAIF_MLR_classifier_test ) */
+BOOST_AUTO_TEST_SUITE( FAIF_MLR_classifier_test )
 
 typedef MLReg< ValueNominal<string> > MLR;
 typedef MLR::AttrIdd AttrIdd;
@@ -45,7 +47,12 @@ typedef MLR::Beliefs Beliefs;
 typedef MLR::ExampleTest ExampleTest;
 typedef MLR::ExampleTrain ExampleTrain;
 typedef MLR::ExamplesTrain ExamplesTrain;
- int main(){
+typedef MLR::NormExample NormExample;
+typedef MLR::NormExamples NormExamples;
+typedef MLR::NCategoryId NCategoryId;
+typedef MLR::Matrix Matrix;
+typedef MLR::Vector Vector;
+ /* int main(){ */
 	/* faif::ml::MLReg<faif::ValueNominal<std::string> > test; */
 	/* faif::ml::MLReg<faif::ValueNominal<std::string> > test2; */
 
@@ -67,8 +74,77 @@ typedef MLR::ExamplesTrain ExamplesTrain;
     /* std::cout<<"All tests for Multinomial Logistic Regression Classifier passed."<<std::endl; */
 
     /* return 0; */
+/* } */
+
+double calcExp(NormExample &ex, Matrix&mat,int row);
+double calcExp(NormExample &ex, Matrix&mat,int row)
+{
+    double power=0;
+    for(int i=0;i<ex.size();i++){
+
+        power=power+ex[i]*mat[row][i];
+    }
+    return std::exp(power);
+
 }
-/*
+
+BOOST_AUTO_TEST_CASE(SoftMaxFunTest){
+
+    NormExample ex(3);
+    NCategoryId catId = 0;
+    Matrix mat(3,3);
+    mat[0][0]=2;mat[0][1]=5;mat[0][2]=2;
+    mat[1][0]=0;mat[1][1]=2;mat[1][2]=4;
+    mat[2][0]=2;mat[2][1]=7;mat[2][2]=9;
+
+    ex[0]=3;ex[1]=10;ex[2]=15;
+
+    double assertProb = calcExp(ex,mat,catId);
+    double denom=0;
+    for(int i=0;i<3;i++){
+        denom+=calcExp(ex,mat,i);
+    }
+    assertProb=assertProb/denom;
+    double prob = MLR::calcSoftMax(ex,catId,mat);
+    BOOST_CHECK_EQUAL(prob,assertProb);
+}
+
+
+BOOST_AUTO_TEST_CASE(CalcGradTest){
+    Matrix parameters(3,3);
+
+    NormExample tEx(3);
+    tEx[0]=5;tEx[1]=2;tEx[2]=9;
+    tEx.category=0;
+    NormExamples tExamples(3,3,1);
+    tExamples[0]=tEx;
+    NCategoryId catId=0;
+
+    Vector grad = MLR::BGDTraining::calcGrad(tExamples,parameters,catId);
+    Vector assertGrad(3);
+    double softMaxVal = MLR::calcSoftMax(tEx,tEx.category,parameters);
+    assertGrad[0]=(tEx[0] * (1.0-softMaxVal))/-1;
+    assertGrad[1]=(tEx[1] * (1.0-softMaxVal))/-1;
+    assertGrad[2]=(tEx[2] * (1.0-softMaxVal))/-1;
+    BOOST_CHECK_EQUAL_COLLECTIONS(grad.origin(),grad.origin()+grad.num_elements(),assertGrad.origin(),assertGrad.origin()+assertGrad.num_elements());
+
+    for(int i=0;i<assertGrad.size();i++)
+    {
+        parameters[0][i]=parameters[0][i]-assertGrad[i];
+    }
+
+    catId=1;
+
+    grad = MLR::BGDTraining::calcGrad(tExamples,parameters,catId);
+
+    softMaxVal = MLR::calcSoftMax(tEx,tEx.category,parameters);
+    assertGrad[0]=(tEx[0] * (0.0-softMaxVal))/-1;
+    assertGrad[1]=(tEx[1] * (0.0-softMaxVal))/-1;
+    assertGrad[2]=(tEx[2] * (0.0-softMaxVal))/-1;
+    BOOST_CHECK_EQUAL_COLLECTIONS(grad.origin(),grad.origin()+grad.num_elements(),assertGrad.origin(),assertGrad.origin()+assertGrad.num_elements());
+
+}
+
 Domains createWeatherAttributes();
 Domains createWeatherAttributes() {
     Domains attribs;
@@ -145,4 +221,4 @@ BOOST_AUTO_TEST_CASE( weatherClasifierTest ) {
 
 }
 BOOST_AUTO_TEST_SUITE_END()
-    */
+

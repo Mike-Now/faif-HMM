@@ -47,7 +47,7 @@ namespace faif {
                         Matrix(int n,int m): boost::multi_array<double,2>(boost::extents[n][m]){
                             std::fill(this->data(),this->data()+this->num_elements(),0);
                         }
-                        void print(){
+                        void print() const{
                             std::cout<<"Macierz:"<<std::endl;
                             for(int i=0;i<size1();i++){
                                 for(int j=0;j<size2();j++){
@@ -63,7 +63,7 @@ namespace faif {
                         Vector(int n): boost::multi_array<double,1>(boost::extents[n]){
                             std::fill(this->data(),this->data()+this->num_elements(),0);
                         }
-                        void print(){
+                        void print() const{
                             std::cout<<"Wektor:"<<std::endl;
                             for(int i=0;i<size();i++){
                                 std::cout<<(*this)[i]<<" ";
@@ -71,7 +71,7 @@ namespace faif {
                             std::cout<<std::endl;
 
                         }
-                        int size(){return this->shape()[0];}
+                        int size()const{return this->shape()[0];}
                     };
                     /* typedef boost::multi_array<double, 1> ParamVector; */
                     typedef boost::multi_array<int , 1>IntVec;
@@ -120,7 +120,6 @@ namespace faif {
                     std::unique_ptr<Model> model;
                     std::unique_ptr<MLRegTraining> trainingImpl;
                     std::string currentTrainingId;
-                    static Probability calcSoftMax(const NormExample& ex, const NCategoryId nCatId,const Matrix &parameters);
                 public:
                     MLReg();
                     MLReg(const Domains& attr_domains, const AttrDomain& category_domains,std::string algorithmId );
@@ -128,6 +127,8 @@ namespace faif {
 
                     virtual void reset();
                     virtual void reset(std::string algorithmId);
+
+                    static Probability calcSoftMax(const NormExample& ex, const NCategoryId nCatId,const Matrix &parameters);
 
                     template<class Archive>
                         void save(Archive & ar, const unsigned int file_version) const {
@@ -202,7 +203,7 @@ namespace faif {
                                 boost::serialization::base_object<Classifier<MLRegTraining> >(*this);
                             }
                         public:
-                        Vector calcChange(NormExamples &examples, Matrix& parameters,NCategoryId catId);
+                        static Vector calcGrad(NormExamples &examples, Matrix& parameters,NCategoryId catId);
                         Matrix* train(NormExamples& examples);
                         ~BGDTraining(){}
                     };
@@ -431,7 +432,9 @@ namespace faif {
                 NAttrId nAttrIdd=0;
                 for(typename Domains::const_iterator jj = attribs.begin(); jj!= attribs.end();++jj){
                     const AttrDomain& attr = *jj;
+                    int size = attr.getSize();
                     for(typename AttrDomain::const_iterator kk = attr.begin(); kk!= attr.end(); ++kk){
+                        if(size>1 && std::next(kk) == attr.end()) break;//TODO
                         AttrIdd val = AttrDomain::getValueId(kk);
                         normMap.insert(std::make_pair(val,nAttrIdd));
                         nAttrIdd+=1;
@@ -466,10 +469,16 @@ namespace faif {
                     NCategoryId nCatId = revCatMap.find(catVal)->second;
                     NormExample nEx(nattrNum);
                     nEx.category=nCatId;
+                    typename std::map<AttrIdd,NAttrId>::const_iterator mapIt;
                     for(typename ExampleTrain::const_iterator i = ex.begin();i!=ex.end();i++)
                     {
                         AttrIdd trnValue = *i;
-                        NAttrId nAttrId = normMap.find(trnValue)->second;
+                        mapIt = normMap.find(trnValue);
+                        if(mapIt==normMap.end())//TODO
+                        {
+                            continue;
+                        }
+                        NAttrId nAttrId = mapIt->second;
                         nEx[nAttrId]=1.0;
                     }
                     (*normExamples)[ii] = nEx;
@@ -483,9 +492,13 @@ namespace faif {
                 /* bool isNominal=(typeid(typename AttrDomain::ValueTag)==typeid(faif::nominal_tag)); */
                 int vecSize=parameters->size2();
                 NormExample ex=NormExample(vecSize);
+                typename std::map<AttrIdd,NAttrId>::const_iterator mapIt;
                 for(typename ExampleTest::const_iterator ii=example.begin();ii!=example.end();ii++)
                 {
-                    NAttrId nAttrId= normMap.find(*ii)->second;
+                    mapIt = normMap.find(*ii);
+                    if(mapIt==normMap.end())
+                        continue;//TODO
+                    NAttrId nAttrId= mapIt->second;
                     ex[nAttrId]=1.0;
                 }
                 return ex;
@@ -496,6 +509,7 @@ namespace faif {
                 Probability maxProb=0;
                 NCategoryId bestCatId;
                 NormExample ex= normalizeTestExample(example);
+                /* ex.print();//TODO */
                 for(int i=0;i<parameters->size1();i++){
                     NCategoryId nCatId= i;
                     Probability prob = calcSoftMax(ex,nCatId,*parameters);
@@ -503,9 +517,9 @@ namespace faif {
                         maxProb=prob;
                         bestCatId = nCatId;
                     }
+                /* std::cout<<prob<<"  "; */
 
                 }
-                if(bestCatId == 1) std::cout<<"WOWDWDAWDWADWAD"<<std::endl;
                 AttrIdd rCat = catMap.find(bestCatId)->second;
                 return rCat;
             }
@@ -536,7 +550,7 @@ namespace faif {
                 Matrix * trainedParams = new Matrix(catN,attrN);
                 Matrix & params=*trainedParams;
 
-                double learningRate=1;
+                double learningRate=0.02;
                 int maxIter=2000;
                 int iter=0;
                 double tol=1e-5;
@@ -544,12 +558,12 @@ namespace faif {
                 while(iter<maxIter && !converged){
                     double hDelta=0;
                     //iterate for every category
-                    for(NCategoryId i=1;i<catN;i++){
-                        Vector iterVec = calcChange(examples,params,i);
+                    for(NCategoryId i=0;i<catN;i++){
+                        Vector iterVec = calcGrad(examples,params,i);
                         //iterate for every attr weight
                         /* iterVec.print(); */
                         for(NAttrId j=0;j<attrN;j++){
-                            params[i][j]-=(learningRate*iterVec[j]);
+                            params[i][j]=params[i][j]-(learningRate*iterVec[j]);
                             if(abs(iterVec[j])>tol) {hDelta=abs(iterVec[j]);
                             }
                         }
@@ -565,7 +579,7 @@ namespace faif {
             }
         template<typename Val>
             typename MLReg<Val>::Vector
-            MLReg<Val>::BGDTraining::calcChange(MLReg<Val>::NormExamples& examples,Matrix& parameters, NCategoryId catId)
+            MLReg<Val>::BGDTraining::calcGrad(MLReg<Val>::NormExamples& examples,Matrix& parameters, NCategoryId catId)
             {
                 int attrNum = examples[0].size();
                 /* int catNum = examples.categoriesCount; */
@@ -579,13 +593,13 @@ namespace faif {
                     double innerVal=indicatorVal-softMaxVal;
                     for(int i=0;i<delta.size();i++)
                     {
-                        delta[i]+=(*it)[i]*innerVal;
+                        delta[i]=delta[i]+(*it)[i]*innerVal;
                     }
                 }
-                /* delta.print(); */
+
                 for(int i=0;i<delta.size();i++){
                     /* delta[i]*=-1/exNum; */
-                    delta[i]=delta[i]*-1/exNum;
+                    delta[i]=delta[i]/-exNum;
                 }
                 return delta;
 
