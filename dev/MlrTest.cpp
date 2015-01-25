@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE(CalcGradTest){
 
     grad = MLR::BGDTraining::calcGrad(tExamples,parameters,catId);
 
-    softMaxVal = MLR::calcSoftMax(tEx,tEx.category,parameters);
+    softMaxVal = MLR::calcSoftMax(tEx,catId,parameters);
     assertGrad[0]=(tEx[0] * (0.0-softMaxVal))/-1;
     assertGrad[1]=(tEx[1] * (0.0-softMaxVal))/-1;
     assertGrad[2]=(tEx[2] * (0.0-softMaxVal))/-1;
@@ -186,10 +186,6 @@ BOOST_AUTO_TEST_CASE( weatherClasifierTest ) {
     MLR n( createWeatherAttributes(), createWeatherCategory(),"BGD" );
     n.train( createWeatherTrainExamples(n) );
 
-    string ET[] = { "slon", "cie", "duza", "slaby"};
-    ExampleTest et = createExample( ET, ET + 4, n);
-    BOOST_CHECK( n.getCategory(et) == n.getCategoryIdd("bad") );
-    //std::cout << n << std::endl;
     string ET01[] = { "slon", "cie", "duza", "slaby"}; ExampleTest et01 = createExample( ET01, ET01 + 4, n);
     BOOST_CHECK( n.getCategory(et01) == n.getCategoryIdd("bad") );
     string ET02[] = { "slon", "cie", "duza", "silny"}; ExampleTest et02 = createExample( ET02, ET02 + 4, n);
@@ -200,8 +196,8 @@ BOOST_AUTO_TEST_CASE( weatherClasifierTest ) {
     BOOST_CHECK( n.getCategory(et04) == n.getCategoryIdd("good") );
     string ET05[] = { "desz", "zim", "norm", "slaby"}; ExampleTest et05 = createExample( ET05, ET05 + 4, n);
     BOOST_CHECK( n.getCategory(et05) == n.getCategoryIdd("good") );
-    // string ET06[] = { "desz", "zim", "norm", "silny"}; ExampleTest et06 = createExample( ET06, ET06 + 4, n);
-    // BOOST_CHECK( n.getCategory(et06) == n.getCategoryIdd("bad") );
+    string ET06[] = { "desz", "zim", "norm", "silny"}; ExampleTest et06 = createExample( ET06, ET06 + 4, n);
+    BOOST_CHECK( n.getCategory(et06) == n.getCategoryIdd("bad") );
     string ET07[] = { "poch", "zim", "norm", "silny"}; ExampleTest et07 = createExample( ET07, ET07 + 4, n);
     BOOST_CHECK( n.getCategory(et07) == n.getCategoryIdd("good") );
     string ET08[] = { "slon", "umi", "duza", "slaby"}; ExampleTest et08 = createExample( ET08, ET08 + 4, n);

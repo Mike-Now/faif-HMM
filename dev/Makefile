@@ -4,7 +4,7 @@ CFLAGS = -Wall -Werror -Wmissing-prototypes $(INCLUDE_DIRS) -std=c++11
 LDFLAGS=-lboost_system -lboost_serialization -lboost_unit_test_framework
 SOURCES=$(wildcard *.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)
-TARGET= mlr MlrTest nbc
+TARGET= mlr MlrTest
 
 DEPENDENCIES=$(filter-out $(TARGET:=.o), $(OBJECTS) )
 
@@ -17,9 +17,6 @@ MlrTest: $(DEPENDENCIES) MlrTest.o
 	$(CC) $(LDFLAGS)  -o $@ $^
 	./$@
 
-nbc: $(DEPENDENCIES) nbc.o
-	$(CC) $(LDFLAGS)  -o $@ $^
-	./$@
 %.o: %.cpp %.hpp
 	$(CC) $(CFLAGS) -c $<
 

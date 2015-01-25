@@ -48,7 +48,7 @@ int main() {
     string ET[] = { "sunny", "hot", "high", "weak"};   ExampleTest et = createExample( ET, ET + 4, inst);
 
 	//the classifier shoulde return the 'good' category
-    std::cout << ( inst.getCategory(et) == inst.getCategoryIdd("good") ) << std::endl; //true
+    std::cout << ( inst.getCategory(et) == inst.getCategoryIdd("bad") ) << std::endl; //true
 
 	//cross-validation on given set of examples
 	std::cout << checkCross(ex, 14, inst) << std::endl;

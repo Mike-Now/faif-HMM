@@ -45,7 +45,7 @@ namespace faif {
                     typedef int NCategoryId;
                     struct Matrix: boost::multi_array<double, 2>{
                         Matrix(int n,int m): boost::multi_array<double,2>(boost::extents[n][m]){
-                            std::fill(this->data(),this->data()+this->num_elements(),0);
+                            reset();
                         }
                         void print() const{
                             std::cout<<"Macierz:"<<std::endl;
@@ -58,10 +58,18 @@ namespace faif {
                         }
                         int size1() const {return this->shape()[0];}
                         int size2() const {return this->shape()[1];}
+                        void reset(double r=0.0)
+                        {
+                            std::fill(this->data(),this->data()+this->num_elements(),r);
+                        }
+                        Matrix& operator =(Matrix &m){
+                            boost::multi_array<double, 2>::operator = (m);
+                            return *this;
+                        }
                     };
                     struct Vector: boost::multi_array<double ,1>{
                         Vector(int n): boost::multi_array<double,1>(boost::extents[n]){
-                            std::fill(this->data(),this->data()+this->num_elements(),0);
+                            reset();
                         }
                         void print() const{
                             std::cout<<"Wektor:"<<std::endl;
@@ -71,14 +79,22 @@ namespace faif {
                             std::cout<<std::endl;
 
                         }
+                        void reset(double r=0.0)
+                        {
+                            std::fill(this->data(),this->data()+this->num_elements(),r);
+                        }
+                        Vector& operator =(Matrix &v){
+                            boost::multi_array<double, 1>::operator = (v);
+                            return *this;
+                        }
+
                         int size()const{return this->shape()[0];}
                     };
-                    /* typedef boost::multi_array<double, 1> ParamVector; */
+
                     typedef boost::multi_array<int , 1>IntVec;
 
                     struct NormExample: Vector{
                         NormExample(int size): Vector(size) {
-                            std::fill(this->data(),this->data()+this->num_elements(),0);
                             category=-1;
                         }
                         NCategoryId category;
@@ -120,6 +136,7 @@ namespace faif {
                     std::unique_ptr<Model> model;
                     std::unique_ptr<MLRegTraining> trainingImpl;
                     std::string currentTrainingId;
+                    const NAttrId ConstantId;
                 public:
                     MLReg();
                     MLReg(const Domains& attr_domains, const AttrDomain& category_domains,std::string algorithmId );
@@ -305,13 +322,13 @@ namespace faif {
         // class MLReg implementation
         //////////////////////////////////////////////////////////////////////////////////////////////////
         template<typename Val>
-            MLReg<Val>::MLReg() : Classifier<Val>()
+            MLReg<Val>::MLReg() : Classifier<Val>(), ConstantId(-1)
         {
         }
 
         template<typename Val>
             MLReg<Val>::MLReg(const Domains& attr_domains, const AttrDomain& category_domain,std::string trainingId)
-            : Classifier<Val>(attr_domains, category_domain)
+            : Classifier<Val>(attr_domains, category_domain),ConstantId(-1)
             {
                 model.reset(new Model(*this));
                 currentTrainingId = trainingId;
@@ -323,9 +340,10 @@ namespace faif {
             {
                 double power=0;
                 for(int j=0;j<ex.size();j++){
-                    double beta = parameters[nCatId][j];
                     double attrVal = ex[j];
-                    power+=beta*attrVal;
+                    if(attrVal==0.0) continue;
+                    double beta = parameters[nCatId][j];
+                    power=power+beta*attrVal;
                 }
                 double numerator = std::exp(power);
 
@@ -335,9 +353,10 @@ namespace faif {
                     double power=0;
                     for(int j=0;j<ex.size();j++){
 
-                        double beta = parameters[c][j];
                         double attrVal = ex[j];
-                        power+=beta*attrVal;
+                        if(attrVal==0.0)continue;
+                        double beta = parameters[c][j];
+                        power=power+beta*attrVal;
                     }
 
                     denominator+=std::exp(power);
@@ -432,9 +451,9 @@ namespace faif {
                 NAttrId nAttrIdd=0;
                 for(typename Domains::const_iterator jj = attribs.begin(); jj!= attribs.end();++jj){
                     const AttrDomain& attr = *jj;
-                    int size = attr.getSize();
+                    /* int size = attr.getSize(); */
                     for(typename AttrDomain::const_iterator kk = attr.begin(); kk!= attr.end(); ++kk){
-                        if(size>1 && std::next(kk) == attr.end()) break;//TODO
+                        /* if(size>1 && std::next(kk) == attr.end()) break;//TODO */
                         AttrIdd val = AttrDomain::getValueId(kk);
                         normMap.insert(std::make_pair(val,nAttrIdd));
                         nAttrIdd+=1;
@@ -509,7 +528,6 @@ namespace faif {
                 Probability maxProb=0;
                 NCategoryId bestCatId;
                 NormExample ex= normalizeTestExample(example);
-                /* ex.print();//TODO */
                 for(int i=0;i<parameters->size1();i++){
                     NCategoryId nCatId= i;
                     Probability prob = calcSoftMax(ex,nCatId,*parameters);
@@ -517,7 +535,6 @@ namespace faif {
                         maxProb=prob;
                         bestCatId = nCatId;
                     }
-                /* std::cout<<prob<<"  "; */
 
                 }
                 AttrIdd rCat = catMap.find(bestCatId)->second;
@@ -546,35 +563,31 @@ namespace faif {
                 int catN = examples.categoriesCount;
                 int attrN = examples[0].size();
 
-                /* examples.print(); */
                 Matrix * trainedParams = new Matrix(catN,attrN);
                 Matrix & params=*trainedParams;
 
-                double learningRate=0.02;
-                int maxIter=2000;
+                double learningRate=0.1;
+                int maxIter=300;
                 int iter=0;
-                double tol=1e-5;
-                bool converged=false;
-                while(iter<maxIter && !converged){
+                double tol=1e-8;
+                Matrix newParams(catN,attrN);
+                while(iter<maxIter){
                     double hDelta=0;
-                    //iterate for every category
+
                     for(NCategoryId i=0;i<catN;i++){
-                        Vector iterVec = calcGrad(examples,params,i);
-                        //iterate for every attr weight
-                        /* iterVec.print(); */
+                        Vector errorVec = calcGrad(examples,params,i);
+
                         for(NAttrId j=0;j<attrN;j++){
-                            params[i][j]=params[i][j]-(learningRate*iterVec[j]);
-                            if(abs(iterVec[j])>tol) {hDelta=abs(iterVec[j]);
+                            newParams[i][j]=newParams[i][j]-(learningRate*errorVec[j]);
+                            if(abs(errorVec[j])>tol) {hDelta=abs(errorVec[j]);
                             }
                         }
                     }
+                    params=newParams;
                     iter++;
-                    /* std::cout<<"HDELTA"<<hDelta<<std::endl; */
-                    /* if(hDelta<=tol) converged=true; */
 
                 }
-                /* std::cout<<"ITER"<<iter<<std::endl; */
-                /* params.print(); */
+
                 return trainedParams;
             }
         template<typename Val>
@@ -582,26 +595,23 @@ namespace faif {
             MLReg<Val>::BGDTraining::calcGrad(MLReg<Val>::NormExamples& examples,Matrix& parameters, NCategoryId catId)
             {
                 int attrNum = examples[0].size();
-                /* int catNum = examples.categoriesCount; */
+
                 int exNum = examples.size();
-                Vector delta(attrNum);
+                Vector grad(attrNum);
                 for(typename NormExamples::iterator it=examples.begin();it!=examples.end();it++){
                     double indicatorVal=0.0;
                     NCategoryId iCatId = it->category;
                     if(iCatId == catId) indicatorVal=1.0;
-                    Probability softMaxVal = calcSoftMax(*it,iCatId,parameters);
-                    double innerVal=indicatorVal-softMaxVal;
-                    for(int i=0;i<delta.size();i++)
+                    Probability prob = calcSoftMax(*it,catId,parameters);
+                    double multiplier=(indicatorVal-prob)/-exNum;
+                    for(int i=0;i<grad.size();i++)
                     {
-                        delta[i]=delta[i]+(*it)[i]*innerVal;
+                        if((*it)[i] == 0.0) continue;
+                        grad[i]=grad[i]+(*it)[i]*multiplier;
                     }
                 }
 
-                for(int i=0;i<delta.size();i++){
-                    /* delta[i]*=-1/exNum; */
-                    delta[i]=delta[i]/-exNum;
-                }
-                return delta;
+                return grad;
 
             }
 
