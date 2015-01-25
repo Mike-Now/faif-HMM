@@ -7,25 +7,25 @@
 #include <memory>
 #include <vector>
 #include <cmath>
+#include <stdexcept>
 #include <boost/functional/factory.hpp>
 #include <boost/function.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/multi_array.hpp>
-#include <boost/serialization/split_member.hpp>
-#include <boost/serialization/base_object.hpp>
-#include <boost/serialization/nvp.hpp>
-#include <boost/serialization/map.hpp>
-#include <boost/serialization/vector.hpp>
+#include <boost/optional.hpp>
+#include <boost/any.hpp>
+/* #include <boost/serialization/split_member.hpp> */
+/* #include <boost/serialization/base_object.hpp> */
+/* #include <boost/serialization/nvp.hpp> */
+/* #include <boost/serialization/map.hpp> */
+/* #include <boost/serialization/vector.hpp> */
 #include "Classifier.hpp"
-#include "boostFix.hpp"
+#include "MachineLearningExceptions.hpp"
 
 namespace faif {
     namespace ml {
-        /** \brief Multinomial Logistic Regression Classifier
-         *
-         *
-         */
+        /** Multinomial Logistic Regression Classifier
+        */
         template<typename Val>
             class MLReg : public Classifier<Val> {
                 public:
@@ -40,15 +40,51 @@ namespace faif {
                     typedef typename Classifier<Val>::ExampleTrain ExampleTrain;
                     typedef typename Classifier<Val>::ExamplesTrain ExamplesTrain;
 
+                    /**
+                     * a container for training parameters.
+                     *
+                     * the convenience class to set dynamic parameters.
+                     */
+                    struct TrainingParameters : std::map<std::string,boost::any>{
+
+                        template<class T>
+                            T get(const std::string key)const{
+                                iterator it = this->find(key);
+                                if(it==this->end())
+                                    throw std::runtime_error(std::string("No such training parameter: ")+key);
+                                else
+                                    return boost::any_cast<T>(it->second);
+                            }
+                        bool exists(const std::string key){
+                            iterator it = this->find(key);
+                            if(it==this->end())
+                                return false;
+                            else
+                                return true;
+                        }
+                        private:
+                        typedef std::map<std::string,boost::any>::const_iterator iterator;
+
+                    };
+
+                    //forward declaration of an abstract training class
                     class MLRegTraining;
-                    typedef int NAttrId;
-                    typedef int NCategoryId;
+
+                    //internal indices for categories(classes) and attributes(features).
+                    typedef int IAttrId;
+                    typedef int ICategoryId;
+
+
+                    /**
+                     * a dynamic matrix for values of 'double' type.
+                     */
                     struct Matrix: boost::multi_array<double, 2>{
                         Matrix(int n,int m): boost::multi_array<double,2>(boost::extents[n][m]){
                             reset();
                         }
+
                         void print() const{
-                            std::cout<<"Macierz:"<<std::endl;
+                            std::cout<<"Matrix:"<<std::endl;
                             for(int i=0;i<size1();i++){
                                 for(int j=0;j<size2();j++){
                                     std::cout<<(*this)[i][j]<<" ";
@@ -56,23 +92,50 @@ namespace faif {
                                 std::cout<<std::endl;
                             }
                         }
+                        double absMax(){
+                            double absMax=0.0;
+                            for(int i=0;i<size1();i++){
+                                for(int j=0;j<size2();j++){
+                                    double t= fabs((*this)[i][j]);
+                                    if(t>absMax)
+                                        absMax=t;
+                                }
+                            }
+                            return absMax;
+                        }
+
                         int size1() const {return this->shape()[0];}
                         int size2() const {return this->shape()[1];}
+
+                        /**
+                         * set the value of every cell
+                         */
                         void reset(double r=0.0)
                         {
                             std::fill(this->data(),this->data()+this->num_elements(),r);
                         }
-                        Matrix& operator =(Matrix &m){
+
+                        /**
+                         * assign operator overload
+                         *
+                         * uses boost's elementwise copying to prevent
+                         * launching of relatively expensive copy-constructor*/
+                        Matrix& operator =(const Matrix &m){
                             boost::multi_array<double, 2>::operator = (m);
                             return *this;
                         }
                     };
+
+
+                    /**
+                     * essentially a one dimensional matrix.
+                     */
                     struct Vector: boost::multi_array<double ,1>{
                         Vector(int n): boost::multi_array<double,1>(boost::extents[n]){
                             reset();
                         }
                         void print() const{
-                            std::cout<<"Wektor:"<<std::endl;
+                            std::cout<<"Vector:"<<std::endl;
                             for(int i=0;i<size();i++){
                                 std::cout<<(*this)[i]<<" ";
                             }
@@ -83,7 +146,7 @@ namespace faif {
                         {
                             std::fill(this->data(),this->data()+this->num_elements(),r);
                         }
-                        Vector& operator =(Matrix &v){
+                        Vector& operator =(const Vector &v){
                             boost::multi_array<double, 1>::operator = (v);
                             return *this;
                         }
@@ -91,52 +154,73 @@ namespace faif {
                         int size()const{return this->shape()[0];}
                     };
 
-                    typedef boost::multi_array<int , 1>IntVec;
 
-                    struct NormExample: Vector{
-                        NormExample(int size): Vector(size) {
+
+                    /**
+                     * the internal representation of a training sample.
+                     *
+                     * inherits from the Vector struct.
+                     */
+                    struct IExample: Vector{
+                        IExample(int size): Vector(size) {
                             category=-1;
                         }
-                        NCategoryId category;
+                        ICategoryId category;
                         int size() const {return this->shape()[0];}
                         void print(){
-                            std::cout<<"Wektor: ";
-                            for(int i=0;i<size();i++){
-                                std::cout<<(*this)[i]<<" ";
-                            }
+                            Vector::print();
                             if(category!=-1)
-                                std::cout<<"Kat.: "<<category;
+                                std::cout<<"Cat.: "<<category;
                             std::cout<<std::endl;
                         }
                     };
 
-                    typedef std::unique_ptr< NormExample> NormExamplePtr;
+                    typedef std::unique_ptr< IExample> IExamplePtr;
 
-                    struct NormExamples: std::vector<NormExample>{
-                        NormExamples(int catN,int attrN, int exNum): std::vector<NormExample>(exNum,NormExample(attrN)){
+                    /**
+                     * a vector of training samples.
+                     */
+                    struct IExamples: std::vector<IExample>{
+                        IExamples(int catN,int attrN, int exNum): std::vector<IExample>(exNum,IExample(attrN)){
                             categoriesCount=catN;
                         }
-                        NormExamples(int attrN,int exNum):std::vector<NormExample>(exNum,NormExample(attrN)){
+                        IExamples(int attrN,int exNum):std::vector<IExample>(exNum,IExample(attrN)){
                             categoriesCount=-1;
                         }
                         void print(){
-                            for(typename std::vector<NormExample>::iterator it=this->begin();it!=this->end();it++){
+                            for(typename IExample::iterator it=this->begin();it!=this->end();it++){
                                 it->print();
                             }
-
                         }
+
                         int categoriesCount;
                     };
-                    typedef std::unique_ptr< NormExamples> NormExamplesPtr;
+
+                    typedef std::unique_ptr< IExamples> IExamplesPtr;
                     typedef std::unique_ptr< MLRegTraining> MLRegTrainingPtr;
+
+                    //a generic factory for a training algorithm
                     typedef boost::function< MLRegTrainingPtr ()> TrainingFactory;
                 private:
+
+                    //stores trained parameters and calculates probability
                     class Model;
+
+                    //stores different training algorithms
                     class FactoryManager;
+
+                    //the current model
                     std::unique_ptr<Model> model;
+
+                    //the current training algorithm
                     std::unique_ptr<MLRegTraining> trainingImpl;
+
+                    //the id of the current training algorithm
                     std::string currentTrainingId;
-                    const NAttrId ConstantId;
+
+                    //a user-defined training settings
+                    TrainingParameters trainingParameters;
+
                 public:
                     MLReg();
                     MLReg(const Domains& attr_domains, const AttrDomain& category_domains,std::string algorithmId );
@@ -145,43 +229,16 @@ namespace faif {
                     virtual void reset();
                     virtual void reset(std::string algorithmId);
 
-                    static Probability calcSoftMax(const NormExample& ex, const NCategoryId nCatId,const Matrix &parameters);
+                    static Probability calcSoftMax(const IExample& ex, const ICategoryId nCatId,const Matrix &parameters,double constant=0.0);
 
-                    template<class Archive>
-                        void save(Archive & ar, const unsigned int file_version) const {
-                            boost::serialization::base_object<Classifier<Val> >(*this);
-
-                            ar & currentTrainingId;
-                            ar & model;
-                            ar & trainingImpl;
-                        }
-
-                    template<class Archive>
-                        void load(Archive & ar, const unsigned int ile_version) {
-                            boost::serialization::base_object<Classifier<Val> >(*this);
-
-                            ar & currentTrainingId;
-                            ar & model;
-                            ar & trainingImpl;
-
-                            if(model) {
-                                model->parent_ = this;
-                                model->mapAttributes();
-                            }
-                        }
-
-                    template<class Archive>
-                        void serialize( Archive &ar, const unsigned int file_version ){
-                            boost::serialization::split_member(ar, *this, file_version);
-                            /*boost::serialization::base_object<Classifier<Val> >(*this);
-
-                              ar & currentTrainingId;
-                              ar & model;
-                              ar & trainingImpl;*/
-                        }
+                    void setTrainingParameters(TrainingParameters tParams){
+                        trainingParameters = tParams;
+                        trainingImpl->setParameters(trainingParameters);
+                    }
 
                     std::string getTrainingId(){return currentTrainingId;}
 
+                    double validateModel(const ExamplesTrain& e);
                     template<class T>
                         static void registerTraining(std::string trainingId);
 
@@ -196,35 +253,36 @@ namespace faif {
                     virtual void write(std::ostream& os) const;
 
                     class MLRegTraining {
-                        friend class boost::serialization::access;
-                        Probability calcSoftMax(NormExample&ex,NCategoryId&c,Matrix&p){
-                            return MLReg::calcSoftMax(ex,c,p);
+                        Probability calcSoftMax(IExample&ex,ICategoryId&c,Matrix&p,double cons){
+                            return MLReg::calcSoftMax(ex,c,p,cons);
                         }
 
-                        template<class Archive>
-                            void serialize(Archive & ar, const unsigned int version)
-                            {
-
-                            }
-
                         public:
-                        virtual Matrix* train(NormExamples& examples)=0;
+                        virtual void setParameters(TrainingParameters &p)=0;
+                        virtual Matrix* train(IExamples& examples)=0;
                         virtual ~MLRegTraining(){};
                     };
                     class BGDTraining : public MLRegTraining{
                         friend class boost::serialization::access;
 
-                        template<class Archive>
-                            void serialize(Archive & ar, const unsigned int version)
-                            {
-                                boost::serialization::base_object<Classifier<MLRegTraining> >(*this);
-                            }
                         public:
-                        static Vector calcGrad(NormExamples &examples, Matrix& parameters,NCategoryId catId);
-                        Matrix* train(NormExamples& examples);
+                        double learningRate;
+                        int totalIterations;
+                        BGDTraining():learningRate(1.0),totalIterations(1000),constant(0.0){}
+                        void setParameters(TrainingParameters &p);
+                        double calcCost(MLReg<Val>::IExamples& example,Matrix& parameters);
+                        Vector calcGrad(IExamples &examples, Matrix& parameters,ICategoryId catId);
+                        Matrix* train(IExamples& examples);
                         ~BGDTraining(){}
+                        private:
+                        double constant;
                     };
                 private:
+
+                    /**
+                     * The class for storing training algorithms.
+                     *
+                     */
                     class FactoryManager{
                         private:
                             typedef typename MLReg<Val>::TrainingFactory TrainingFactory;
@@ -248,20 +306,12 @@ namespace faif {
 
                             friend class boost::serialization::access;
 
-                            template<class Archive>
-                                void serialize( Archive &ar, const unsigned int file_version ){
-                                    /* boost::serialization::split_member(ar, *this, file_version); */
-                                    ar & trainings;
-                                }
-
                     };
                     class Model{
                         public:
-                            NormExample normalizeTestExample(const ExampleTest& example)const;
-                            NormExamplesPtr normalizeExamples(const ExamplesTrain& examples) const;
+                            IExample mapTestExample(const ExampleTest& example)const;
+                            IExamplesPtr mapExamples(const ExamplesTrain& examples) const;
                             AttrIdd classify(const ExampleTest& testEx);
-                            Model() {
-                            }
                             Model(MLReg & parent): parent_(&parent){
                                 mapAttributes();
                             }
@@ -270,82 +320,82 @@ namespace faif {
 
                             Beliefs getCategories(const ExampleTest&) const;
                             void setParameters(Matrix *trainedParams);
-                            //infer
+
                         private:
+                            Model();
                             void mapAttributes();
-                            //initial values -> normalized values mapping
-                            std::map<AttrIdd, NAttrId> normMap;
+
+                            std::map<AttrIdd, IAttrId> attrMap;
+
                             //trained params
                             std::unique_ptr<Matrix> parameters;
 
+
                             //map between internal cat. indices and category ids(attridd)
-                            std::map<NCategoryId, AttrIdd> catMap;
-                            std::map<AttrIdd,NCategoryId> revCatMap;
+                            std::map<ICategoryId, AttrIdd> catMap;
+
+                            //reverse of the map above
+                            std::map<AttrIdd,ICategoryId> revCatMap;
+
+                            //cached constant to prevent overflow
+                            double constant;
+
                             MLReg * parent_;
 
-                            /** \brief serialization using boost::serialization */
-                            friend class boost::serialization::access;
                             friend class MLReg;
 
-                            /*template<class Archive>
-                              void save(Archive & ar, const unsigned int file_version ) const {
-                              ar << boost::serialization::make_nvp("Category", data_ );
-                              ar << boost::serialization::make_nvp("Data", attrData_ );
-
-                              }*/
-
-                            /*template<class Archive>
-                              void load(Archive & ar, const unsigned int file_version) {
-                              ar >> boost::serialization::make_nvp("Category", data_ );
-                              typedef std::map<AttrIddSerialize,T> Map;
-                              Map m;
-                              ar >> boost::serialization::make_nvp("Data", m );
-                              attrData_.clear();
-                              for(typename Map::const_iterator ii = m.begin(); ii != m.end(); ++ii) {
-                            //transform from loaded std::pair (with not const key) to stored std::pair is required
-                            attrData_.insert(typename AttrData::value_type(ii->first, ii->second) );
-                            }
-                            }*/
-
-                            template<class Archive>
-                                void serialize( Archive &ar, const unsigned int file_version ){
-                                    /* boost::serialization::split_member(ar, *this, file_version); */
-                                    ar & parameters;
-                                    ar & normMap;
-                                    ar & catMap;
-                                    ar & revCatMap;
-                                }
                     };
             }; //class MLReg
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
         // class MLReg implementation
         //////////////////////////////////////////////////////////////////////////////////////////////////
+
+        /**
+         * the empty classifier constructor
+         *
+         * used for unmarshalling.
+         */
         template<typename Val>
-            MLReg<Val>::MLReg() : Classifier<Val>(), ConstantId(-1)
+            MLReg<Val>::MLReg() : Classifier<Val>()
         {
         }
 
+        /**
+         * initializes model and a training algorithm
+         */
         template<typename Val>
             MLReg<Val>::MLReg(const Domains& attr_domains, const AttrDomain& category_domain,std::string trainingId)
-            : Classifier<Val>(attr_domains, category_domain),ConstantId(-1)
+            : Classifier<Val>(attr_domains, category_domain)
             {
                 model.reset(new Model(*this));
                 currentTrainingId = trainingId;
                 this->reset(trainingId);
             }
+
+        /**
+         * implementation of softmax for regression
+         *
+         * @param ex a sample
+         * @param nCatId a category for which to calculate probability
+         * @param parameters a set of trained parameters
+         * @constant an offset to prevent overflow
+         */
         template <typename Val>
             Probability
-            MLReg<Val>::calcSoftMax(const NormExample& ex, const NCategoryId nCatId,const Matrix &parameters)
+            MLReg<Val>::calcSoftMax(const IExample& ex, const ICategoryId nCatId,const Matrix &parameters,double constant)
             {
                 double power=0;
                 for(int j=0;j<ex.size();j++){
                     double attrVal = ex[j];
+
+                    //skips an unnecessary iteration
                     if(attrVal==0.0) continue;
+
                     double beta = parameters[nCatId][j];
                     power=power+beta*attrVal;
                 }
-                double numerator = std::exp(power);
+                double numerator = std::exp(power-constant);
 
                 double denominator= 0;
                 for (int c=0;c<parameters.size1();c++){
@@ -354,54 +404,82 @@ namespace faif {
                     for(int j=0;j<ex.size();j++){
 
                         double attrVal = ex[j];
+
                         if(attrVal==0.0)continue;
+
                         double beta = parameters[c][j];
                         power=power+beta*attrVal;
                     }
 
-                    denominator+=std::exp(power);
+                    denominator+=std::exp(power-constant);
                 }
                 return numerator/denominator;
             }
 
+        /**
+         * fits model based on offline samples
+         */
         template<typename Val>
             void MLReg<Val>::train(const ExamplesTrain& examples) {
-                NormExamplesPtr ptr = model->normalizeExamples(examples);
+                IExamplesPtr ptr = model->mapExamples(examples);
                 Matrix * params = trainingImpl->train(*ptr);
                 model->setParameters(params);
             };
-        /** clear the learned parameters */
+
+        /**
+         * clears regression parameters
+         */
         template<typename Val>
             void MLReg<Val>::reset() {
                 model.reset(new Model(*this));
-                /* this->reset(currentTrainingId); */
             };
 
+        /**
+         * clears regression parameters
+         *
+         * sets training algorithm based on a given trainingId
+         */
         template<typename Val>
-            void MLReg<Val>::reset(std::string treningId){
+            void MLReg<Val>::reset(std::string trainingId){
                 TrainingFactory factory;
-                factory = FactoryManager::getInstance().getFactory(treningId);
+                factory = FactoryManager::getInstance().getFactory(trainingId);
                 trainingImpl=factory();
+                trainingImpl->setParameters(trainingParameters);
                 model.reset(new Model(*this));
             };
 
+        /**
+         * returns the best category based on a trained model
+         */
         template<typename Val>
             typename MLReg<Val>::AttrIdd
             MLReg<Val>::getCategory(const ExampleTest& example) const {
                 return model->getCategory(example);
             };
 
+        /**
+         * returns a score (softmax probability) for an every class
+         */
         template<typename Val>
             typename MLReg<Val>::Beliefs
             MLReg<Val>::getCategories(const ExampleTest& example) const {
                 return model->getCategories(example);
             }
+
+        /**
+         * registers a training to the FactoryManager
+         *
+         * templated for convenience - avoids explicit casting
+         */
         template<typename Val>
             template<class T>
             void MLReg<Val>::registerTraining(std::string trainingId){
                 FactoryManager::getInstance().template registerTraining<T>(trainingId);
             }
-        /** ostream method */
+
+        /**
+         * prints model parameters to stream
+         */
         template<typename Val>
             void MLReg<Val>::write(std::ostream& os) const {
             }
@@ -409,10 +487,18 @@ namespace faif {
         //////////////////////////////////////////////////////////////////////////////////////////////////
         // class FactoryManager implementation
         //////////////////////////////////////////////////////////////////////////////////////////////////
+
+        /**
+         * registers implemented training algorithms
+         */
         template<typename Val>
             MLReg<Val>::FactoryManager::FactoryManager(){
                 registerTraining<MLReg<Val>::BGDTraining>("BGD");
             }
+
+        /**
+         * creates and returns a training algorithm.
+         */
         template<typename Val>
             typename MLReg<Val>::TrainingFactory
             MLReg<Val>::FactoryManager::getFactory(std::string trainingId){
@@ -423,8 +509,7 @@ namespace faif {
                     return it->second;
                 }
                 else{
-                    std::cout<<"IS NULL PANIC";
-                    return NULL; //TODO generalized exception
+                    throw MissingTrainingException(trainingId);
                 }
             }
 
@@ -448,19 +533,19 @@ namespace faif {
         template<typename Val>
             void MLReg<Val>::Model::mapAttributes() {
                 const Domains& attribs = this->parent_->getAttrDomains();
-                NAttrId nAttrIdd=0;
+                IAttrId nAttrIdd=0;
                 for(typename Domains::const_iterator jj = attribs.begin(); jj!= attribs.end();++jj){
                     const AttrDomain& attr = *jj;
                     /* int size = attr.getSize(); */
                     for(typename AttrDomain::const_iterator kk = attr.begin(); kk!= attr.end(); ++kk){
                         /* if(size>1 && std::next(kk) == attr.end()) break;//TODO */
                         AttrIdd val = AttrDomain::getValueId(kk);
-                        normMap.insert(std::make_pair(val,nAttrIdd));
+                        attrMap.insert(std::make_pair(val,nAttrIdd));
                         nAttrIdd+=1;
                     }
                 }
 
-                NCategoryId nCatId = 0;
+                ICategoryId nCatId = 0;
                 const AttrDomain& category = this->parent_->getCategoryDomain();
                 for(typename AttrDomain::const_iterator ii = category.begin(); ii!=category.end();++ii){
                     AttrIdd catId = AttrDomain::getValueId(ii);
@@ -471,13 +556,14 @@ namespace faif {
 
             }
         template<typename Val>
-            typename MLReg<Val>::NormExamplesPtr
-            MLReg<Val>::Model::normalizeExamples(const MLReg<Val>::ExamplesTrain& examples)const {
+            typename MLReg<Val>::IExamplesPtr
+            MLReg<Val>::Model::mapExamples(const MLReg<Val>::ExamplesTrain& examples)const {
+                //possible ugly solution for dispatching types based on nested type ValueNominal<T>
                 /* bool isNominal=(typeid(typename AttrDomain::ValueTag)==typeid(faif::nominal_tag)); */
-                int nattrNum = normMap.size();
+                int nattrNum = attrMap.size();
                 int ncatNum = catMap.size();
                 int exNum = examples.size();
-                NormExamplesPtr normExamples(new NormExamples(ncatNum,nattrNum,exNum));
+                IExamplesPtr normExamples(new IExamples(ncatNum,nattrNum,exNum));
 
                 typename ExamplesTrain::const_iterator exIt;
                 int ii=0;
@@ -485,19 +571,19 @@ namespace faif {
 
                     const ExampleTrain &ex = *exIt;
                     AttrIdd catVal = ex.getFeature();
-                    NCategoryId nCatId = revCatMap.find(catVal)->second;
-                    NormExample nEx(nattrNum);
+                    ICategoryId nCatId = revCatMap.find(catVal)->second;
+                    IExample nEx(nattrNum);
                     nEx.category=nCatId;
-                    typename std::map<AttrIdd,NAttrId>::const_iterator mapIt;
+                    typename std::map<AttrIdd,IAttrId>::const_iterator mapIt;
                     for(typename ExampleTrain::const_iterator i = ex.begin();i!=ex.end();i++)
                     {
                         AttrIdd trnValue = *i;
-                        mapIt = normMap.find(trnValue);
-                        if(mapIt==normMap.end())//TODO
+                        mapIt = attrMap.find(trnValue);
+                        if(mapIt==attrMap.end()) //kth value is missing in k-1 dummy coding
                         {
                             continue;
                         }
-                        NAttrId nAttrId = mapIt->second;
+                        IAttrId nAttrId = mapIt->second;
                         nEx[nAttrId]=1.0;
                     }
                     (*normExamples)[ii] = nEx;
@@ -506,18 +592,22 @@ namespace faif {
                 return normExamples;
             }
         template <typename Val>
-            typename MLReg<Val>::NormExample
-            MLReg<Val>::Model::normalizeTestExample(const ExampleTest& example)const{
+            typename MLReg<Val>::IExample
+            MLReg<Val>::Model::mapTestExample(const ExampleTest& example)const{
+                //possible ugly solution for dispatching types based on nested type ValueNominal<T>
                 /* bool isNominal=(typeid(typename AttrDomain::ValueTag)==typeid(faif::nominal_tag)); */
                 int vecSize=parameters->size2();
-                NormExample ex=NormExample(vecSize);
-                typename std::map<AttrIdd,NAttrId>::const_iterator mapIt;
+                IExample ex=IExample(vecSize);
+                typename std::map<AttrIdd,IAttrId>::const_iterator mapIt;
                 for(typename ExampleTest::const_iterator ii=example.begin();ii!=example.end();ii++)
                 {
-                    mapIt = normMap.find(*ii);
-                    if(mapIt==normMap.end())
-                        continue;//TODO
-                    NAttrId nAttrId= mapIt->second;
+                    mapIt = attrMap.find(*ii);
+
+                    //skip null k-th value , when k-1 dummy coding is active
+                    if(mapIt==attrMap.end())
+                        continue;
+
+                    IAttrId nAttrId= mapIt->second;
                     ex[nAttrId]=1.0;
                 }
                 return ex;
@@ -526,11 +616,11 @@ namespace faif {
             typename MLReg<Val>::AttrIdd
             MLReg<Val>::Model::getCategory(const ExampleTest& example) const {
                 Probability maxProb=0;
-                NCategoryId bestCatId;
-                NormExample ex= normalizeTestExample(example);
+                ICategoryId bestCatId;
+                IExample ex= mapTestExample(example);
                 for(int i=0;i<parameters->size1();i++){
-                    NCategoryId nCatId= i;
-                    Probability prob = calcSoftMax(ex,nCatId,*parameters);
+                    ICategoryId nCatId= i;
+                    Probability prob = calcSoftMax(ex,nCatId,*parameters, this->constant);
                     if(prob>maxProb){
                         maxProb=prob;
                         bestCatId = nCatId;
@@ -544,14 +634,22 @@ namespace faif {
         template<typename Val>
             typename MLReg<Val>::Beliefs
             MLReg<Val>::Model::getCategories(const ExampleTest& example) const {
-                /* return impl_->getCategories(example); */
-                //TODO
                 Beliefs b;
+                IExample ex = mapTestExample(example);
+                for(int i=0;i<parameters->size1();i++){
+                    ICategoryId nCatId= i;
+                    Probability prob = calcSoftMax(ex,nCatId,*parameters,this->constant);
+
+                    AttrIdd catVal = catMap.find(nCatId)->second;
+                    b.push_back(typename Beliefs::value_type(catVal,prob));
+                }
+                std::sort(b.begin(),b.end());
                 return b;
             }
         template<typename Val>
             void MLReg<Val>::Model::setParameters(Matrix * trainParams){
                 parameters.reset(trainParams);
+                this->constant = parameters->absMax();
             }
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -559,29 +657,26 @@ namespace faif {
         //////////////////////////////////////////////////////////////////////////////////////////////////
 
         template<typename Val>
-            typename MLReg<Val>::Matrix *MLReg<Val>::BGDTraining::train(MLReg<Val>::NormExamples& examples){
+            typename MLReg<Val>::Matrix *MLReg<Val>::BGDTraining::train(MLReg<Val>::IExamples& examples){
                 int catN = examples.categoriesCount;
                 int attrN = examples[0].size();
 
                 Matrix * trainedParams = new Matrix(catN,attrN);
                 Matrix & params=*trainedParams;
 
-                double learningRate=0.1;
-                int maxIter=300;
                 int iter=0;
-                double tol=1e-8;
                 Matrix newParams(catN,attrN);
-                while(iter<maxIter){
-                    double hDelta=0;
 
-                    for(NCategoryId i=0;i<catN;i++){
+                while(iter<totalIterations){
+                    this->constant = params.absMax();
+
+                    for(ICategoryId i=0;i<catN;i++){
                         Vector errorVec = calcGrad(examples,params,i);
 
-                        for(NAttrId j=0;j<attrN;j++){
+                        for(IAttrId j=0;j<attrN;j++){
                             newParams[i][j]=newParams[i][j]-(learningRate*errorVec[j]);
-                            if(abs(errorVec[j])>tol) {hDelta=abs(errorVec[j]);
-                            }
                         }
+
                     }
                     params=newParams;
                     iter++;
@@ -592,18 +687,20 @@ namespace faif {
             }
         template<typename Val>
             typename MLReg<Val>::Vector
-            MLReg<Val>::BGDTraining::calcGrad(MLReg<Val>::NormExamples& examples,Matrix& parameters, NCategoryId catId)
+            MLReg<Val>::BGDTraining::calcGrad(MLReg<Val>::IExamples& examples,Matrix& parameters, ICategoryId catId)
             {
                 int attrNum = examples[0].size();
 
                 int exNum = examples.size();
                 Vector grad(attrNum);
-                for(typename NormExamples::iterator it=examples.begin();it!=examples.end();it++){
+                for(typename IExamples::iterator it=examples.begin();it!=examples.end();it++){
                     double indicatorVal=0.0;
-                    NCategoryId iCatId = it->category;
+                    ICategoryId iCatId = it->category;
                     if(iCatId == catId) indicatorVal=1.0;
-                    Probability prob = calcSoftMax(*it,catId,parameters);
+
+                    Probability prob = calcSoftMax(*it,catId,parameters,this->constant);
                     double multiplier=(indicatorVal-prob)/-exNum;
+
                     for(int i=0;i<grad.size();i++)
                     {
                         if((*it)[i] == 0.0) continue;
@@ -613,6 +710,31 @@ namespace faif {
 
                 return grad;
 
+            }
+        template<typename Val>
+            double MLReg<Val>::BGDTraining::calcCost(MLReg<Val>::IExamples& examples,Matrix& parameters){
+                double multiplier = -1/examples.size();
+                double cost =0.0;
+                for(int i=0;i<examples.size();i++){
+                    for(ICategoryId j=0;j<parameters.size1();j++){
+                        if(j==examples[i].category){
+                            Probability prob = calcSoftMax(examples[i],j,parameters,this->constant);
+                            cost+=std::log(prob)*multiplier;
+
+                        }
+                    }
+                }
+                return cost;
+
+            }
+        template<typename Val>
+            void MLReg<Val>::BGDTraining::setParameters(MLReg<Val>::TrainingParameters &p){
+                if(p.exists("totalIterations")){
+                    int t = p.template get<int>("totalIterations");
+                    this->totalIterations=t;}
+                if(p.exists("learningRate")){
+                    double d = p.template get<double>("learningRate");
+                    this->learningRate= d;}
             }
 
     }

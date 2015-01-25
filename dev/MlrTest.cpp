@@ -47,37 +47,14 @@ typedef MLR::Beliefs Beliefs;
 typedef MLR::ExampleTest ExampleTest;
 typedef MLR::ExampleTrain ExampleTrain;
 typedef MLR::ExamplesTrain ExamplesTrain;
-typedef MLR::NormExample NormExample;
-typedef MLR::NormExamples NormExamples;
-typedef MLR::NCategoryId NCategoryId;
+typedef MLR::IExample IExample;
+typedef MLR::IExamples IExamples;
+typedef MLR::ICategoryId ICategoryId;
 typedef MLR::Matrix Matrix;
 typedef MLR::Vector Vector;
- /* int main(){ */
-	/* faif::ml::MLReg<faif::ValueNominal<std::string> > test; */
-	/* faif::ml::MLReg<faif::ValueNominal<std::string> > test2; */
 
-	/* { */
-	/* 	std::ofstream ofs("serial"); */
-
-	/* 	boost::archive::text_oarchive oa(ofs); */
-
-	/* 	oa << test; */
-	/* } */
-	/* { */
-	/* 	std::ifstream ifs("serial"); */
-
-	/* 	boost::archive::text_iarchive ia(ifs); */
-
-	/* 	ia >> test2; */
-	/* } */
-
-    /* std::cout<<"All tests for Multinomial Logistic Regression Classifier passed."<<std::endl; */
-
-    /* return 0; */
-/* } */
-
-double calcExp(NormExample &ex, Matrix&mat,int row);
-double calcExp(NormExample &ex, Matrix&mat,int row)
+double calcExp(IExample &ex, Matrix&mat,int row);
+double calcExp(IExample &ex, Matrix&mat,int row)
 {
     double power=0;
     for(int i=0;i<ex.size();i++){
@@ -90,8 +67,8 @@ double calcExp(NormExample &ex, Matrix&mat,int row)
 
 BOOST_AUTO_TEST_CASE(SoftMaxFunTest){
 
-    NormExample ex(3);
-    NCategoryId catId = 0;
+    IExample ex(3);
+    ICategoryId catId = 0;
     Matrix mat(3,3);
     mat[0][0]=2;mat[0][1]=5;mat[0][2]=2;
     mat[1][0]=0;mat[1][1]=2;mat[1][2]=4;
@@ -113,14 +90,15 @@ BOOST_AUTO_TEST_CASE(SoftMaxFunTest){
 BOOST_AUTO_TEST_CASE(CalcGradTest){
     Matrix parameters(3,3);
 
-    NormExample tEx(3);
+    IExample tEx(3);
     tEx[0]=5;tEx[1]=2;tEx[2]=9;
     tEx.category=0;
-    NormExamples tExamples(3,3,1);
+    IExamples tExamples(3,3,1);
     tExamples[0]=tEx;
-    NCategoryId catId=0;
+    ICategoryId catId=0;
 
-    Vector grad = MLR::BGDTraining::calcGrad(tExamples,parameters,catId);
+    MLR::BGDTraining bgd;
+    Vector grad = bgd.calcGrad(tExamples,parameters,catId);
     Vector assertGrad(3);
     double softMaxVal = MLR::calcSoftMax(tEx,tEx.category,parameters);
     assertGrad[0]=(tEx[0] * (1.0-softMaxVal))/-1;
@@ -135,7 +113,7 @@ BOOST_AUTO_TEST_CASE(CalcGradTest){
 
     catId=1;
 
-    grad = MLR::BGDTraining::calcGrad(tExamples,parameters,catId);
+    grad = bgd.calcGrad(tExamples,parameters,catId);
 
     softMaxVal = MLR::calcSoftMax(tEx,catId,parameters);
     assertGrad[0]=(tEx[0] * (0.0-softMaxVal))/-1;
@@ -184,6 +162,10 @@ ExamplesTrain createWeatherTrainExamples(const MLR& nb) {
 BOOST_AUTO_TEST_CASE( weatherClasifierTest ) {
 
     MLR n( createWeatherAttributes(), createWeatherCategory(),"BGD" );
+    MLR::TrainingParameters trnParams;
+    trnParams["totalIterations"]=500;
+    trnParams["learningRate"]=0.1;
+    n.setTrainingParameters(trnParams);
     n.train( createWeatherTrainExamples(n) );
 
     string ET01[] = { "slon", "cie", "duza", "slaby"}; ExampleTest et01 = createExample( ET01, ET01 + 4, n);
