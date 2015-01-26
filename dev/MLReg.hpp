@@ -23,8 +23,9 @@
 
 namespace faif {
     namespace ml {
-        /** Multinomial Logistic Regression Classifier
-        */
+        /**
+         * Multinomial Logistic Regression Classifier
+         */
         template<typename Val>
             class MLReg : public Classifier<Val> {
                 public:
@@ -49,8 +50,10 @@ namespace faif {
                         template<class T>
                             T get(const std::string key)const{
                                 iterator it = this->find(key);
-                                if(it==this->end())
-                                    throw std::runtime_error(std::string("No such training parameter: ")+key);
+                                if(it==this->end()){
+                                    std::string msg="No such training parameter: "+key;
+                                    throw std::runtime_error(msg);
+                                }
                                 else
                                     return boost::any_cast<T>(it->second);
                             }
@@ -180,14 +183,19 @@ namespace faif {
                      * a vector of training samples.
                      */
                     struct IExamples: std::vector<IExample>{
-                        IExamples(int catN,int attrN, int exNum): std::vector<IExample>(exNum,IExample(attrN)){
+                        IExamples(int catN,int attrN, int exNum):
+                            std::vector<IExample>(exNum,IExample(attrN))
+                        {
                             categoriesCount=catN;
                         }
-                        IExamples(int attrN,int exNum):std::vector<IExample>(exNum,IExample(attrN)){
+                        IExamples(int attrN,int exNum):
+                            std::vector<IExample>(exNum,IExample(attrN))
+                        {
                             categoriesCount=-1;
                         }
                         void print(){
-                            for(typename IExample::iterator it=this->begin();it!=this->end();it++){
+                            typename IExamples::iterator it=this->begin();
+                            for(it;it!=this->end();it++){
                                 it->print();
                             }
                         }
@@ -222,13 +230,16 @@ namespace faif {
 
                 public:
                     MLReg();
-                    MLReg(const Domains& attr_domains, const AttrDomain& category_domains,std::string algorithmId );
+                    MLReg(const Domains& attr_domains,
+                            const AttrDomain& category_domains,std::string algorithmId );
                     virtual ~MLReg() { }
 
                     virtual void reset();
                     virtual void reset(std::string algorithmId);
 
-                    static Probability calcSoftMax(const IExample& ex, const ICategoryId nCatId,const Matrix &parameters,double constant=0.0);
+                    static Probability calcSoftMax(const IExample& ex, 
+                            const ICategoryId nCatId,
+                            const Matrix &parameters,double constant=0.0);
 
                     void setTrainingParameters(TrainingParameters tParams){
                         trainingParameters = tParams;
@@ -252,7 +263,8 @@ namespace faif {
                     virtual void write(std::ostream& os) const;
 
                     class MLRegTraining {
-                        Probability calcSoftMax(IExample&ex,ICategoryId&c,Matrix&p,double cons){
+                        Probability calcSoftMax(IExample&ex,ICategoryId&c,
+                                Matrix&p,double cons){
                             return MLReg::calcSoftMax(ex,c,p,cons);
                         }
 
@@ -270,7 +282,8 @@ namespace faif {
                         BGDTraining():learningRate(0.01),totalIterations(3000){}
                         void setParameters(TrainingParameters &p);
                         double calcCost(MLReg<Val>::IExamples& example,Matrix& parameters);
-                        Vector calcGrad(IExamples &examples, Matrix& parameters,ICategoryId catId);
+                        Vector calcGrad(IExamples &examples,
+                                Matrix& parameters,ICategoryId catId);
                         Matrix* train(IExamples& examples);
                         ~BGDTraining(){}
                         private:
@@ -675,7 +688,8 @@ namespace faif {
          * from a current set of parameters.
          */
         template<typename Val>
-            typename MLReg<Val>::Matrix *MLReg<Val>::BGDTraining::train(MLReg<Val>::IExamples& examples){
+            typename MLReg<Val>::Matrix
+            *MLReg<Val>::BGDTraining::train(MLReg<Val>::IExamples& examples){
                 int catN = examples.categoriesCount;
                 int attrN = examples[0].size();
 
@@ -707,7 +721,8 @@ namespace faif {
          */
         template<typename Val>
             typename MLReg<Val>::Vector
-            MLReg<Val>::BGDTraining::calcGrad(MLReg<Val>::IExamples& examples,Matrix& parameters, ICategoryId catId)
+            MLReg<Val>::BGDTraining::calcGrad(MLReg<Val>::IExamples& examples,
+                    Matrix& parameters, ICategoryId catId)
             {
                 int attrNum = examples[0].size();
 
@@ -735,7 +750,8 @@ namespace faif {
          * calculate the value of the cost function.
          */
         template<typename Val>
-            double MLReg<Val>::BGDTraining::calcCost(MLReg<Val>::IExamples& examples,Matrix& parameters){
+            double MLReg<Val>::BGDTraining::calcCost(MLReg<Val>::IExamples& examples,
+                    Matrix& parameters){
                 double multiplier = -1/examples.size();
                 double cost =0.0;
                 for(int i=0;i<examples.size();i++){
