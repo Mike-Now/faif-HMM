@@ -1,4 +1,9 @@
-#skrypt dla scons (nie ma sensu bezposrednio pod Pythonem) -*- mode: Python; -*-
+#scons script -*- mode: Python; -*-
+
+## @file SConscript
+#  @brief scons build for calc C++ library
+## @package modules
+
 import os, platform, shutil, re
 import files
 

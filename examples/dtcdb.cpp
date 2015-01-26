@@ -18,7 +18,6 @@ int main() {
 	typedef DecisionTree< ValueNominal<string> > DTC;
 	typedef DTC::AttrDomain AttrDomain;
 	typedef DTC::Domains Domains;
-	typedef DTC::Beliefs Beliefs;
 	typedef DTC::ExampleTest ExampleTest;
 	typedef DTC::ExamplesTrain ExamplesTrain;
 

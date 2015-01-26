@@ -11,7 +11,6 @@ int main() {
 	typedef NaiveBayesian< ValueNominal<string> > NB;
 	typedef NB::AttrDomain AttrDomain;
 	typedef NB::Domains Domains;
-	typedef NB::Beliefs Beliefs;
 	typedef NB::ExampleTest ExampleTest;
 	typedef NB::ExamplesTrain ExamplesTrain;
 

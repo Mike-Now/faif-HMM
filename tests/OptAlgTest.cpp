@@ -64,7 +64,7 @@ namespace {
 
 /** easy test - find the maximum of -(x*x) function */
 BOOST_AUTO_TEST_CASE( EAMaximumTest1 ) {
-    boost::array<double,4> D  = { { 1.0, -2.0, -4.0, 8.0 } };
+	boost::array<double,4> D  = { { 1.0, -2.0, -4.0, 8.0 } };
 	EASpace::Population init_population( D.begin(), D.end() );
     EvolutionaryAlgorithm<EASpace, MutationCustom, CrossoverNone, SelectionRanking, StopAfterNSteps<30> > ea;
     BOOST_CHECK_SMALL( ea.solve(init_population), 0.1 );
@@ -76,23 +76,23 @@ BOOST_AUTO_TEST_CASE( EAMaximumTest2 ) {
     vector<double> random_init(3);
     generate( random_init.begin(), random_init.end(), gen );
     EvolutionaryAlgorithm<EASpace, MutationCustom, CrossoverNone, SelectionRanking, StopAfterNSteps<30> > ea;
-    BOOST_CHECK_SMALL( ea.solve(random_init), 0.1 );
+    BOOST_CHECK_SMALL( ea.solve(random_init), 0.2 );
 }
 
 /** easy test - find the maximum of -(x*x) function */
 BOOST_AUTO_TEST_CASE( EAMaximumTest3 ) {
-    boost::array<double,4> D  = { { 1.0, -2.0, -4.0, 8.0 } };
+	boost::array<double,4> D  = { { 1.0, -2.0, -4.0, 8.0 } };
 	EASpace::Population init_population( D.begin(), D.end() );
     EvolutionaryAlgorithm<EASpace, MutationCustom, CrossoverNone, SelectionRoulette, StopAfterNSteps<3000> > ea;
-    BOOST_CHECK_SMALL( ea.solve(init_population), 0.1 );
+    BOOST_CHECK_SMALL( ea.solve(init_population), 0.2 );
 }
 
 /** easy test - find the maximum of -(x*x) function */
 BOOST_AUTO_TEST_CASE( EAMaximumTest4 ) {
-    boost::array<double,4> D  = { { 1.0, -2.0, -4.0, 8.0 } };
+	boost::array<double,4> D  = { { 1.0, -2.0, -4.0, 8.0 } };
 	EASpace::Population init_population( D.begin(), D.end() );
     EvolutionaryAlgorithm<EASpace, MutationNone, CrossoverCustom, SelectionRanking, StopAfterNSteps<3000> > ea;
-    BOOST_CHECK_SMALL( ea.solve(init_population), 0.1 );
+    BOOST_CHECK_SMALL( ea.solve(init_population), 0.2 );
 }
 
 namespace {
@@ -191,31 +191,31 @@ void EABackpackTest(vector<int> backpack, int max_backpack) {
 
 
 BOOST_AUTO_TEST_CASE( BackpackEATest13 ) {
-    boost::array<int,6> TAB  = { { 2, 3, 4, 5, 9, 11 } };
+	boost::array<int,6> TAB  = { { 2, 3, 4, 5, 9, 11 } };
     vector<int> backpack(TAB.begin(), TAB.end() );
     EABackpackTest(backpack, 13);
 }
 
 BOOST_AUTO_TEST_CASE( BackpackEATest14 ) {
-    boost::array<int,6> TAB  = { { 2, 3, 4, 5, 9, 11 } };
+	boost::array<int,6> TAB  = { { 2, 3, 4, 5, 9, 11 } };
     vector<int> backpack(TAB.begin(), TAB.end() );
     EABackpackTest(backpack, 14);
 }
 
 BOOST_AUTO_TEST_CASE( BackpackEATest15 ) {
-    boost::array<int,6> TAB  = { { 2, 3, 4, 5, 9, 11 } };
+	boost::array<int,6> TAB  = { { 2, 3, 4, 5, 9, 11 } };
     vector<int> backpack(TAB.begin(), TAB.end() );
     EABackpackTest(backpack, 15);
 }
 
 BOOST_AUTO_TEST_CASE( BackpackEATest16 ) {
-    boost::array<int,6> TAB  = { { 2, 3, 4, 5, 9, 11 } };
+	boost::array<int,6> TAB  = { { 2, 3, 4, 5, 9, 11 } };
     vector<int> backpack(TAB.begin(), TAB.end() );
     EABackpackTest(backpack, 16);
 }
 
 BOOST_AUTO_TEST_CASE( BackpackEATest17 ) {
-    boost::array<int,6> TAB  = { { 2, 3, 4, 5, 9, 11 } };
+	boost::array<int,6> TAB  = { { 2, 3, 4, 5, 9, 11 } };
     vector<int> backpack(TAB.begin(), TAB.end() );
     EABackpackTest(backpack, 17);
 }
@@ -287,7 +287,7 @@ BOOST_AUTO_TEST_CASE( BackpackEATest28 ) {
 }
 
 BOOST_AUTO_TEST_CASE( BackpackEATest29 ) {
-     boost::array<int,6> TAB  = { { 2, 3, 4, 5, 9, 11 } };
+    boost::array<int,6> TAB  = { { 2, 3, 4, 5, 9, 11 } };
     vector<int> backpack(TAB.begin(), TAB.end() );
     EABackpackTest(backpack, 29);
 }

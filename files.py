@@ -43,7 +43,7 @@ learn = Module()
 learn.path = 'learning/'
 src = learn.path
 learn.head = [ src+'Belief.hpp', src + 'Fusion.hpp', src+'Classifier.hpp', src + 'Validator.hpp',
-               src+'NaiveBayesian.hpp', src+'DecisionTree.hpp', src+'KNearestNeighbor.hpp' ]
+               src+'NaiveBayesian.hpp', src+'DecisionTree.hpp', src+'KNearestNeighbor.hpp',src + 'MLReg.hpp',src+'MachineLearningExceptions.hpp' ]
 
 #przeszukiwanie
 search = Module()

@@ -1,6 +1,6 @@
 #include <iostream>
-#include <Validator.hpp>
-#include "MLReg.hpp"
+#include <faif/learning/Validator.hpp>
+#include <faif/learning/MLReg.hpp>
 
 using namespace std;
 using namespace faif;
@@ -11,7 +11,6 @@ int main() {
     typedef MLReg<ValueNominal<string> > MLR;
     typedef MLR::AttrDomain AttrDomain;
     typedef MLR::Domains Domains;
-    typedef MLR::Beliefs Beliefs;
     typedef MLR::ExampleTest ExampleTest;
     typedef MLR::ExamplesTrain ExamplesTrain;
 

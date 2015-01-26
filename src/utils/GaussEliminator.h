@@ -13,20 +13,6 @@
 #include <boost/numeric/ublas/matrix.hpp>
 
 namespace faif {
-    template<typename T>
-    //parametry przekazywane przez referencje, sa niszczone podczas obliczen
-	boost::numeric::ublas::vector<T> GaussEliminatorRef(boost::numeric::ublas::matrix<T>& m,
-														boost::numeric::ublas::vector<T>& y); 
-
-
-	template<typename T>
-    //kopiuje parametry, wywoluje GaussEliminatorRef, parametry nie sa niszczone
-	boost::numeric::ublas::vector<T> GaussEliminator(const boost::numeric::ublas::matrix<T>& m,
-													 const boost::numeric::ublas::vector<T>& y) {
-		typename boost::numeric::ublas::matrix<T> mm(m);
-		typename boost::numeric::ublas::vector<T> yy(y);
-		return GaussEliminatorRef(mm,yy);
-	}
 
 	template<typename T>
     //parametry przekazywane przez referencje, sa niszczone podczas obliczen
@@ -66,6 +52,16 @@ namespace faif {
 		}
 		return y;
 	}
+
+	template<typename T>
+    //kopiuje parametry, wywoluje GaussEliminatorRef, parametry nie sa niszczone
+	boost::numeric::ublas::vector<T> GaussEliminator(const boost::numeric::ublas::matrix<T>& m,
+													 const boost::numeric::ublas::vector<T>& y) {
+		typename boost::numeric::ublas::matrix<T> mm(m);
+		typename boost::numeric::ublas::vector<T> yy(y);
+		return GaussEliminatorRef(mm,yy);
+	}
+
 
 } //namespace faif
 

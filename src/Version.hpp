@@ -3,7 +3,7 @@
 #define FAIF_VERSION_H
 namespace faif {
   const int FAIF_VERSION_MAJOR = 0;
-  const int FAIF_VERSION_MINOR = 35;
-  const int FAIF_VERSION_COMPILATION = 023;
+  const int FAIF_VERSION_MINOR = 36;
+  const int FAIF_VERSION_COMPILATION = 000;
 } //namespace faif
 #endif //FAIF_VERSION_H

@@ -3,6 +3,8 @@
 /dist
 /bin
 
+/discretizer
+/mlr
 /dna
 /dtc
 /dtcdb

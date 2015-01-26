@@ -1,22 +1,16 @@
 #srodowisko dla debiana -*- mode: Python; -*-
-import os, platform, subprocess
+import os, platform, re, subprocess
 
 faif_name = 'faif'
 
 ver_major = '0'
-ver_minor = '35'
+ver_minor = '36'
 ver_compilation = '000'
 
-os_platform=platform.system()
-
-BOOST_INCLUDE_WINDOWS = 'C:\\boost_1_57_0'
-BOOST_INCLUDE_WINDOWS_MINGW = '/C/msys64/opt/boost_1_57'
-#BOOST_INCLUDE_LINUX = '/usr/local/include'
-BOOST_INCLUDE_LINUX = '/usr/local/boost_1_57_0'
-BOOST_LIB_WINDOWS_MINGW = '/C/msys64/opt/boost_1_57/stage/lib'
-BOOST_LIB_WINDOWS = 'C:\\boost_1_57_0\\lib64-msvc-12.0'
-BOOST_LIB_LINUX = '/usr/local/boost_1_57_0/stage/lib'
-#BOOST_LIB_LINUX = '/usr/local/lib'
+BOOST_INCLUDE_WINDOWS = 'c:/Boost/include/boost-1_57'
+BOOST_INCLUDE_LINUX = '/usr/local/include'
+BOOST_LIB_WINDOWS = 'c:/Boost/lib'
+BOOST_LIB_LINUX = '/usr/local/lib'
 
 BOOST_THREAD_LINUX = 'boost_thread'
 BOOST_THREAD_LINUX_D = 'boost_thread'
@@ -31,35 +25,26 @@ BOOST_SERIALIZATION_LINUX_D = 'boost_serialization'
 BOOST_UNIT_TEST_LINUX = 'boost_unit_test_framework'
 BOOST_UNIT_TEST_LINUX_D = 'boost_unit_test_framework'
 
+
 #odczytuje wersje kompilacji z wersji repozytorium
-#ver_repository = subprocess.Popen('hg sum', shell=True, stdout=subprocess.PIPE).communicate()[0]
+ver_repository = subprocess.Popen('hg sum', shell=True, stdout=subprocess.PIPE).communicate()[0]
 try:
    ver_compilation = re.search('(?<=parent: )\d+', ver_repository).group()
 except BaseException:
    pass
 
-try:   
-	ver_compilation = subprocess.Popen('git rev-list --count HEAD', shell=True,stdout=subprocess.PIPE).communicate()[0]
-	if (int(ver_compilation)<100):
-		ver_compilation=`0`+ver_compilation.rstrip()
-except BaseException:
-   pass   
-   
 ver_install = '-1'
 
 faif_ver = ver_major + '.' + ver_minor
 faif_full_ver = faif_ver + '.' + ver_compilation + ver_install
-#faif_full_ver='0.35.674' #todo git describe
-#ver_compilation='100'
+
+
 #dodaje dodatkowe argumenty do budowania
 
 vars = Variables('custom.py')
 vars.Add(BoolVariable('install', 'build debian package or setup.exe', 0))
-vars.Add(EnumVariable('compiler','clang gcc and default','default',allowed_values={'clang','gcc','default'},map={},ignorecase=2))
-vars.Add(EnumVariable('clibrary','c99 c11','c11',allowed_values={'c99','c11'},map={},ignorecase=2))
 
 env = Environment(variables=vars)
-
 
 #dodaje opis argumentow do pomocy
 Help(vars.GenerateHelpText(env) )
@@ -70,39 +55,25 @@ Export('ver_major ver_minor ver_compilation ver_install')
 
 
 #settings for debug and release
-if(os_platform== "Linux" or 'mingw' in os_platform.lower() ):
-   if('mingw' in os_platform.lower()):
-
-        env.Append( CPPPATH = [ Dir('.'), Dir(BOOST_INCLUDE_WINDOWS_MINGW) ] )
-        env.Append( LIBPATH = BOOST_LIB_WINDOWS_MINGW )
-   else:
-        env.Append( CPPPATH = [ Dir('.'), Dir(BOOST_INCLUDE_LINUX) ] )
-        env.Append( LIBPATH = BOOST_LIB_LINUX )
-
-
+if(platform.system() == "Linux"):
+   env.Append( CPPPATH = [ Dir('.'), Dir(BOOST_INCLUDE_LINUX) ] )
+   env.Append( LIBPATH = BOOST_LIB_LINUX )
    #env.Append( CPPFLAGS = '-Wall -pedantic -pthread -fPIC -Wstrict-aliasing=2' )
-   env.Append( CPPFLAGS = '-Wall -pedantic -pthread' )
-   if (env['compiler']=='clang'):
-        env.Replace(CXX='clang++') 
-   elif (env['compiler']=='gcc'):
-        env.Replace(CXX='gcc')
-
-   if(env['clibrary']=='c11'):
-        env.Append(CXXFLAGS='-std=c++11') 
-   env.Append( LINKFLAGS = '-Wall -pthread' )
-elif(os_platform== "Windows"):
+   env.Append( CPPFLAGS = '-Wall -pedantic -pthread --std=c++11' )
+   env.Append( LINKFLAGS = '-Wall -pthread --std=c++11' )
+elif(platform.system() == "Windows"):
    env.Append( CPPPATH = [ Dir('.'), Dir(BOOST_INCLUDE_WINDOWS) ] )
    env.Append( LIBPATH = BOOST_LIB_WINDOWS )
    env.Append( WINDOWS_INSERT_MANIFEST = True )
 else:
-   print "os_platform not supported"
+   print "platform not supported"
 
 envdebug = env.Clone()
 
 env.debugFlag = False        #member used to distinguish between debug environment and non-debug one
 envdebug.debugFlag = True
 
-if(os_platform== "Linux" or 'mingw' in os_platform.lower()):
+if(platform.system() == "Linux"):
    env.Append( CPPFLAGS = ' -O3' )
    env.Append( LINKFLAGS = ' -O3' )
    env.Append( LIBS = [BOOST_THREAD_LINUX, BOOST_DATE_TIME_LINUX, BOOST_SERIALIZATION_LINUX, BOOST_CHRONO_LINUX, BOOST_SYSTEM_LINUX] )
@@ -111,18 +82,18 @@ if(os_platform== "Linux" or 'mingw' in os_platform.lower()):
    envdebug.Append( LINKFLAGS = ' -g ' ) #-fprofile-arcs
    envdebug.Append( LIBS = [BOOST_THREAD_LINUX_D, BOOST_DATE_TIME_LINUX_D, BOOST_SERIALIZATION_LINUX_D, BOOST_CHRONO_LINUX_D, BOOST_SYSTEM_LINUX_D ] )
 
-elif(os_platform== "Windows" ):
+elif(platform.system() == "Windows"):
    env.Append( CPPFLAGS = ' /EHsc /MD /D "WIN32" /D "_CONSOLE" /W4 /Ox' )
    env.Append( LINKFLAGS = ' /SUBSYSTEM:CONSOLE ' )
 
-   envdebug.Append( CPPFLAGS = ' /Od /EHsc /MDd /D "WIN32" /D "_CONSOLE" /D "_DEBUG" /W4 /ZI /TP' )
+   envdebug.Append( CPPFLAGS = ' /Od /EHsc /MDd /D "WIN32" /D "_CONSOLE" /D "_DEBUG" /W4 /Zi /TP' )
    envdebug.Append( LINKFLAGS = ' /SUBSYSTEM:CONSOLE /DEBUG ' )
 else:
-   print "System " + os_platform +" not supported "
+   print "System " + platform.system() + " not supported "
 
 
 def add_test_settings( e ):
-   if(os_platform== "Linux" or 'mingw' in os_platform.lower()):
+   if(platform.system() == "Linux"):
       if hasattr(e, 'debugFlag'):
          if e.debugFlag:
             e.Append( LIBS = BOOST_UNIT_TEST_LINUX_D )
@@ -130,7 +101,7 @@ def add_test_settings( e ):
             e.Append( LIBS = BOOST_UNIT_TEST_LINUX )
       else:
          e.Append( LIBS = BOOST_UNIT_TEST_LINUX )
-   elif(os_platform== "Windows" ):
+   elif(platform.system() == "Windows"):
       pass
    else:
       print 'system not supported'
@@ -187,6 +158,7 @@ def build_tests( env, build_dir, post_name ):
    build_single_program( em, 'testDna'+post_name, prepare_src_files(build_dir, [ 'DnaTest.cpp'] ) )
    build_single_program( em, 'testHapl'+post_name, prepare_src_files(build_dir, [ 'HaplTest.cpp'] ) )
    build_single_program( em, 'testTimeseries'+post_name, prepare_src_files(build_dir, [ 'TimeseriesTest.cpp'] ) )
+   build_single_program( em, 'testDiscretizer'+post_name, prepare_src_files(build_dir, [ 'DiscretizerTest.cpp'] ) )
    build_single_program( em, 'testTSPred'+post_name, prepare_src_files(build_dir, [ 'TimeseriesPredictionTest.cpp'] ) )
    build_single_program( em, 'testLearning'+post_name, prepare_src_files(build_dir, [ 'LearningTest.cpp'] ) )
    build_single_program( em, 'testNBC'+post_name, prepare_src_files(build_dir, [ 'NbcTest.cpp'] ) )
@@ -194,6 +166,7 @@ def build_tests( env, build_dir, post_name ):
    build_single_program( em, 'testKNN'+post_name, prepare_src_files(build_dir, [ 'KnnTest.cpp'] ) )
    build_single_program( em, 'testSearch'+post_name, prepare_src_files(build_dir, [ 'SearchTest.cpp'] ) )
    build_single_program( em, 'testOptAlg'+post_name, prepare_src_files(build_dir, [ 'OptAlgTest.cpp'] ) )
+   build_single_program( em, 'testMLR'+post_name, prepare_src_files(build_dir, ['MlrTest.cpp']))
 
    #all tests
    ea = env.Clone()
@@ -202,9 +175,9 @@ def build_tests( env, build_dir, post_name ):
    build_single_program( ea, 'testAll'+post_name, prepare_src_files(build_dir+'all/',
                                                                     ['PrimitivesTest.cpp', 'UtilsTest.cpp',
                                                                      'DnaTest.cpp', 'HaplTest.cpp',
-                                                                     'TimeseriesTest.cpp', 'TimeseriesPredictionTest.cpp',
+                                                                     'TimeseriesTest.cpp', 'DiscretizerTest.cpp', 'TimeseriesPredictionTest.cpp',
                                                                      'LearningTest.cpp', 'NbcTest.cpp', 'DtcTest.cpp', 'KnnTest.cpp',
-                                                                     'SearchTest.cpp', 'OptAlgTest.cpp',
+                                                                     'SearchTest.cpp', 'OptAlgTest.cpp','MlrTest.cpp',
                                                                      'TestAll.cpp' ] ) )
    return
 
@@ -221,9 +194,11 @@ def build_examples( env, build_dir ):
    build_single_program(em, 'dtcdb', source = prepare_src_files(build_dir, ['dtcdb.cpp'] ) )
    build_single_program(em, 'random', source = prepare_src_files(build_dir, ['random.cpp'] ) )
    build_single_program(em, 'search', source = prepare_src_files(build_dir, ['search.cpp'] ) )
+   build_single_program(em, 'discretizer', source = prepare_src_files(build_dir, ['discretizer.cpp'] ) )
+   build_single_program(em, 'mlr', source = prepare_src_files(build_dir, ['mlr.cpp'] ) )
 
 
-if 'install' in COMMAND_LINE_TARGETS:
+if env['install'] == 1:
    SConscript('install/SConscript')
 else:
    file_ver_name = 'src/Version.hpp'

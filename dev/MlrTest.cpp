@@ -29,8 +29,8 @@
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 
-#include "Validator.hpp"
-#include "MLReg.hpp"
+#include "../src/learning/Validator.hpp"
+#include "../src/learning/MLReg.hpp"
 
 using namespace std;
 using namespace faif;
@@ -166,7 +166,9 @@ BOOST_AUTO_TEST_CASE( weatherClasifierTest ) {
     trnParams["totalIterations"]=2000;
     trnParams["learningRate"]=0.1;
     n.setTrainingParameters(trnParams);
-    n.train( createWeatherTrainExamples(n) );
+    ExamplesTrain ex = createWeatherTrainExamples(n); 
+
+    n.train(ex );
 
     string ET01[] = { "slon", "cie", "duza", "slaby"}; ExampleTest et01 = createExample( ET01, ET01 + 4, n);
     BOOST_CHECK( n.getCategory(et01) == n.getCategoryIdd("bad") );
@@ -196,6 +198,9 @@ BOOST_AUTO_TEST_CASE( weatherClasifierTest ) {
     BOOST_CHECK( n.getCategory(et13) == n.getCategoryIdd("good") );
     string ET14[] = { "desz", "umi", "duza", "silny"}; ExampleTest et14 = createExample( ET14, ET14 + 4, n);
     BOOST_CHECK( n.getCategory(et14) == n.getCategoryIdd("bad") );
+
+    BOOST_CHECK( checkClassifier(ex, n) >= static_cast<int>(ex.size()) - 2 );
+    BOOST_CHECK( checkCross(ex, 14, n) >= 0.5 );
 
 }
 BOOST_AUTO_TEST_SUITE_END()

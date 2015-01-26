@@ -178,7 +178,6 @@ BOOST_AUTO_TEST_CASE( exampleCreationTest ) {
     typedef Classifier<ValueNominal<string> > Classifier;
     typedef Classifier::AttrDomain AttrDomain;
     typedef Classifier::Domains Domains;
-    typedef Classifier::AttrIdd AttrIdd;
     typedef Classifier::ExampleTest ExampleTest;
     typedef Classifier::ExampleTrain ExampleTrain;
 
@@ -336,8 +335,6 @@ BOOST_AUTO_TEST_CASE( classifierOstreamTest ) {
     typedef Classifier<Value> Classifier;
     typedef Classifier::AttrDomain AttrDomain;
     typedef Classifier::Domains Domains;
-    typedef Classifier::ExampleTrain ExampleTrain;
-    typedef Classifier::ExamplesTrain ExamplesTrain;
 
     AttrDomain a = createDomain("x", ATTRIBS, ATTRIBS + 2);
     Domains d; d.push_back(a); d.push_back(a);

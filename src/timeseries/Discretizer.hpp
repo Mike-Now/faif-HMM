@@ -18,6 +18,11 @@
 #include <boost/lambda/core.hpp>
 #include <boost/lambda/lambda.hpp>
 
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/nvp.hpp>
+#include <boost/serialization/utility.hpp>
+#include <boost/serialization/vector.hpp>
+
 namespace faif {
     namespace timeseries {
 
@@ -27,10 +32,20 @@ namespace faif {
             BOOST_CONCEPT_ASSERT((boost::EqualityComparable<V>));
 
         public:
+			Section() {} //!< required by serialization
             Section(V min_val, V max_val) : std::pair<V, V>(min_val, max_val) { }
             V getMin() const { return this->first; }
             V getMax() const { return this->second; }
             bool operator==(const Section& s) const { return this->first == s.first && this->second == s.second; }
+
+			/** \brief serialization using boost::serialization */
+			template<class Archive>
+			void serialize(Archive & ar, const unsigned int /* file_version */){
+				ar & boost::serialization::make_nvp("Base",
+													boost::serialization::base_object<std::pair<V,V> >(*this)
+													);
+			}
+
         };
 
 		template<typename V>
@@ -52,6 +67,15 @@ namespace faif {
 					return static_cast<int>(this->size()) - 1; //the last class
 				else
 					return static_cast<int>(it - this->begin()); //return the index of founded class
+			}
+
+
+			/** \brief serialization using boost::serialization */
+			template<class Archive>
+			void serialize(Archive & ar, const unsigned int /* file_version */){
+				ar & boost::serialization::make_nvp("Base",
+													boost::serialization::base_object<std::vector<Section<V> > >(*this)
+													);
 			}
         };
 

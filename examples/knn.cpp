@@ -11,7 +11,6 @@ int main() {
 	typedef KNearestNeighbor< ValueNominal<string> > KNN;
 	typedef KNN::AttrDomain AttrDomain;
 	typedef KNN::Domains Domains;
-	typedef KNN::Beliefs Beliefs;
 	typedef KNN::ExampleTest ExampleTest;
 	typedef KNN::ExamplesTrain ExamplesTrain;
 
