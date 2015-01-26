@@ -29,8 +29,8 @@
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 
-#include "Validator.hpp" //TODO
-#include "MLReg.hpp" //TODO
+#include "Validator.hpp"
+#include "MLReg.hpp"
 
 using namespace std;
 using namespace faif;
@@ -163,9 +163,9 @@ BOOST_AUTO_TEST_CASE( weatherClasifierTest ) {
 
     MLR n( createWeatherAttributes(), createWeatherCategory(),"BGD" );
     MLR::TrainingParameters trnParams;
-    trnParams["totalIterations"]=500;
-    trnParams["learningRate"]=0.1;
-    n.setTrainingParameters(trnParams);
+    /* trnParams["totalIterations"]=2000; */
+    /* /1* trnParams["learningRate"]=0.1; *1/ */
+    /* n.setTrainingParameters(trnParams); */
     n.train( createWeatherTrainExamples(n) );
 
     string ET01[] = { "slon", "cie", "duza", "slaby"}; ExampleTest et01 = createExample( ET01, ET01 + 4, n);

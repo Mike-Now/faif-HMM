@@ -1,4 +1,3 @@
-
 #ifndef FAIF_MLReg_HPP
 #define FAIF_MLReg_HPP
 #include <iostream>
@@ -268,14 +267,13 @@ namespace faif {
                         public:
                         double learningRate;
                         int totalIterations;
-                        BGDTraining():learningRate(1.0),totalIterations(1000),constant(0.0){}
+                        BGDTraining():learningRate(0.01),totalIterations(3000){}
                         void setParameters(TrainingParameters &p);
                         double calcCost(MLReg<Val>::IExamples& example,Matrix& parameters);
                         Vector calcGrad(IExamples &examples, Matrix& parameters,ICategoryId catId);
                         Matrix* train(IExamples& examples);
                         ~BGDTraining(){}
                         private:
-                        double constant;
                     };
                 private:
 
@@ -336,9 +334,6 @@ namespace faif {
 
                             //reverse of the map above
                             std::map<AttrIdd,ICategoryId> revCatMap;
-
-                            //cached constant to prevent overflow
-                            double constant;
 
                             MLReg * parent_;
 
@@ -536,9 +531,11 @@ namespace faif {
                 IAttrId nAttrIdd=0;
                 for(typename Domains::const_iterator jj = attribs.begin(); jj!= attribs.end();++jj){
                     const AttrDomain& attr = *jj;
+                    //uncomment line below to enable k-1 dummy coding
                     /* int size = attr.getSize(); */
                     for(typename AttrDomain::const_iterator kk = attr.begin(); kk!= attr.end(); ++kk){
-                        /* if(size>1 && std::next(kk) == attr.end()) break;//TODO */
+                        //uncomment line below to enable k-1 dummy coding
+                        /* if(size>1 && std::next(kk) == attr.end()) break; */
                         AttrIdd val = AttrDomain::getValueId(kk);
                         attrMap.insert(std::make_pair(val,nAttrIdd));
                         nAttrIdd+=1;
@@ -555,6 +552,11 @@ namespace faif {
                 }
 
             }
+        /**
+         * maps examples to internal representation
+         *
+         * NOTE: only works for ValueNominal
+         */
         template<typename Val>
             typename MLReg<Val>::IExamplesPtr
             MLReg<Val>::Model::mapExamples(const MLReg<Val>::ExamplesTrain& examples)const {
@@ -591,6 +593,9 @@ namespace faif {
                 }
                 return normExamples;
             }
+        /**
+         * maps a test sample to internal representation.
+         */
         template <typename Val>
             typename MLReg<Val>::IExample
             MLReg<Val>::Model::mapTestExample(const ExampleTest& example)const{
@@ -612,6 +617,9 @@ namespace faif {
                 }
                 return ex;
             }
+        /**
+         * inferes the most probable class type and returns it.
+         */
         template<typename Val>
             typename MLReg<Val>::AttrIdd
             MLReg<Val>::Model::getCategory(const ExampleTest& example) const {
@@ -620,7 +628,7 @@ namespace faif {
                 IExample ex= mapTestExample(example);
                 for(int i=0;i<parameters->size1();i++){
                     ICategoryId nCatId= i;
-                    Probability prob = calcSoftMax(ex,nCatId,*parameters, this->constant);
+                    Probability prob = calcSoftMax(ex,nCatId,*parameters);
                     if(prob>maxProb){
                         maxProb=prob;
                         bestCatId = nCatId;
@@ -631,6 +639,11 @@ namespace faif {
                 return rCat;
             }
 
+        /**
+         * a hypthesis function.
+         *
+         * returns a set of probabilities p(y=j|x)
+         */
         template<typename Val>
             typename MLReg<Val>::Beliefs
             MLReg<Val>::Model::getCategories(const ExampleTest& example) const {
@@ -638,7 +651,7 @@ namespace faif {
                 IExample ex = mapTestExample(example);
                 for(int i=0;i<parameters->size1();i++){
                     ICategoryId nCatId= i;
-                    Probability prob = calcSoftMax(ex,nCatId,*parameters,this->constant);
+                    Probability prob = calcSoftMax(ex,nCatId,*parameters);
 
                     AttrIdd catVal = catMap.find(nCatId)->second;
                     b.push_back(typename Beliefs::value_type(catVal,prob));
@@ -649,13 +662,18 @@ namespace faif {
         template<typename Val>
             void MLReg<Val>::Model::setParameters(Matrix * trainParams){
                 parameters.reset(trainParams);
-                this->constant = parameters->absMax();
             }
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
         //class MLReg::BGDTraining
         //////////////////////////////////////////////////////////////////////////////////////////////////
 
+        /**
+         * Batch Gradient Descent
+         *
+         * Tries to minimize cost function by subtracting a gradient of a cost function
+         * from a current set of parameters.
+         */
         template<typename Val>
             typename MLReg<Val>::Matrix *MLReg<Val>::BGDTraining::train(MLReg<Val>::IExamples& examples){
                 int catN = examples.categoriesCount;
@@ -668,7 +686,6 @@ namespace faif {
                 Matrix newParams(catN,attrN);
 
                 while(iter<totalIterations){
-                    this->constant = params.absMax();
 
                     for(ICategoryId i=0;i<catN;i++){
                         Vector errorVec = calcGrad(examples,params,i);
@@ -685,6 +702,9 @@ namespace faif {
 
                 return trainedParams;
             }
+        /**
+         * calculate gradient of a cost function.
+         */
         template<typename Val>
             typename MLReg<Val>::Vector
             MLReg<Val>::BGDTraining::calcGrad(MLReg<Val>::IExamples& examples,Matrix& parameters, ICategoryId catId)
@@ -698,7 +718,7 @@ namespace faif {
                     ICategoryId iCatId = it->category;
                     if(iCatId == catId) indicatorVal=1.0;
 
-                    Probability prob = calcSoftMax(*it,catId,parameters,this->constant);
+                    Probability prob = calcSoftMax(*it,catId,parameters);
                     double multiplier=(indicatorVal-prob)/-exNum;
 
                     for(int i=0;i<grad.size();i++)
@@ -711,6 +731,9 @@ namespace faif {
                 return grad;
 
             }
+        /**
+         * calculate the value of the cost function.
+         */
         template<typename Val>
             double MLReg<Val>::BGDTraining::calcCost(MLReg<Val>::IExamples& examples,Matrix& parameters){
                 double multiplier = -1/examples.size();
@@ -718,7 +741,7 @@ namespace faif {
                 for(int i=0;i<examples.size();i++){
                     for(ICategoryId j=0;j<parameters.size1();j++){
                         if(j==examples[i].category){
-                            Probability prob = calcSoftMax(examples[i],j,parameters,this->constant);
+                            Probability prob = calcSoftMax(examples[i],j,parameters);
                             cost+=std::log(prob)*multiplier;
 
                         }
@@ -727,6 +750,9 @@ namespace faif {
                 return cost;
 
             }
+        /**
+         * adjust settings for a trainer
+         */
         template<typename Val>
             void MLReg<Val>::BGDTraining::setParameters(MLReg<Val>::TrainingParameters &p){
                 if(p.exists("totalIterations")){
