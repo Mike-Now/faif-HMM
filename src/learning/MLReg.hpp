@@ -20,6 +20,7 @@
 /* #include <boost/serialization/vector.hpp> */
 #include "Classifier.hpp"
 #include "MachineLearningExceptions.hpp"
+#include "../../dev/boostFix.hpp"
 
 namespace faif {
     namespace ml {
@@ -234,6 +235,9 @@ namespace faif {
                             const AttrDomain& category_domains,std::string algorithmId );
                     virtual ~MLReg() { }
 
+                    template<typename Archive>
+                    void serialize(Archive & ar, const unsigned int version);
+
                     virtual void reset();
                     virtual void reset(std::string algorithmId);
 
@@ -272,6 +276,7 @@ namespace faif {
                         virtual void setParameters(TrainingParameters &p)=0;
                         virtual Matrix* train(IExamples& examples)=0;
                         virtual ~MLRegTraining(){};
+                        friend class boost::serialization::access;
                     };
                     class BGDTraining : public MLRegTraining{
                         friend class boost::serialization::access;
@@ -334,6 +339,8 @@ namespace faif {
 
                         private:
                             Model();
+                            template<typename Archive>
+                            void serialize(Archive & ar, const unsigned int version);
                             void mapAttributes();
 
                             std::map<AttrIdd, IAttrId> attrMap;
@@ -350,6 +357,7 @@ namespace faif {
 
                             MLReg * parent_;
 
+                            friend class boost::serialization::access;
                             friend class MLReg;
 
                     };
@@ -379,6 +387,19 @@ namespace faif {
                 model.reset(new Model(*this));
                 currentTrainingId = trainingId;
                 this->reset(trainingId);
+            }
+
+        template<typename Val>
+        template<typename Archive>
+            void MLReg<Val>::serialize(Archive & ar, const unsigned int version)
+            {
+                ar & boost::serialization::base_object< Classifier<Val> >(*this);
+
+                ar & model;
+                model->parent_ = this;
+                ar & trainingImpl;
+                ar & currentTrainingId;
+                ar & trainingParameters;
             }
 
         /**
@@ -537,6 +558,15 @@ namespace faif {
         //////////////////////////////////////////////////////////////////////////////////////////////////
         // class Model implementation
         //////////////////////////////////////////////////////////////////////////////////////////////////
+
+        template<typename Val>
+        template<typename Archive>
+            void MLReg<Val>::Model::serialize(Archive & ar, const unsigned int version) {
+                ar & attrMap;
+                ar & parameters;
+                ar & catMap;
+                ar & revCatMap;
+            }
 
         template<typename Val>
             void MLReg<Val>::Model::mapAttributes() {
