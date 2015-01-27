@@ -1,4 +1,4 @@
-#include <map>
+#include <iostream>
 
 namespace boost { 
     namespace serialization {
@@ -50,36 +50,5 @@ namespace boost {
         inline void serialize(Archive & ar, boost::multi_array< T , 2> &t, const unsigned int file_version){
             boost::serialization::split_free(ar, t, file_version);
         }
-
-        /*template<class Archive, class T, class S>
-        inline void save(Archive & ar, std::map< T , S> &t, const unsigned int file_version){
-            // only the raw pointer has to be saved
-            //const T * const base_pointer = t.get();
-            int size = t.size();
-
-            ar & size;
-
-            for (auto it=t.begin(); it!=t.end(); ++it) {
-                ar & it->first;
-                ar & it->second;
-            }
-        }
-        template<class Archive, class T, class S>
-        inline void load(Archive & ar, std::map< T , S> &t, const unsigned int file_version){
-            int size;
-
-            ar & size;
-
-            for(int i = 0; i < size; ++i) {
-                T a; S b;
-                ar & a;
-                ar & b;
-                t[a] = b;
-            }
-        }
-        template<class Archive, class T, class S>
-        inline void serialize(Archive & ar, std::map< T , S> &t, const unsigned int file_version){
-            boost::serialization::split_free(ar, t, file_version);
-        }*/
     } // namespace serialization
 } // namespace boost

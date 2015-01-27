@@ -25,6 +25,7 @@
 /test*
 !/tests
 
+serialize
 *.lib
 *.exe
 *.pdb

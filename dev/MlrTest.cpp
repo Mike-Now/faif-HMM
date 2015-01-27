@@ -203,5 +203,32 @@ BOOST_AUTO_TEST_CASE( weatherClasifierTest ) {
     BOOST_CHECK( checkCross(ex, 14, n) >= 0.5 );
 
 }
+
+BOOST_AUTO_TEST_CASE( serializationTest ) {
+
+    MLR n( createWeatherAttributes(), createWeatherCategory(),"BGD" );
+    MLR::TrainingParameters trnParams;
+    trnParams["totalIterations"]=2000;
+    trnParams["learningRate"]=0.1;
+    n.setTrainingParameters(trnParams);
+    ExamplesTrain ex = createWeatherTrainExamples(n);
+    n.train(ex );
+
+    {
+        ofstream ofs("serialize");
+        boost::archive::text_oarchive oa(ofs);
+        oa << n;
+    }
+
+    {
+        MLR n2( createWeatherAttributes(), createWeatherCategory(),"BGD" );;
+        ifstream ifs("serialize");
+        boost::archive::text_iarchive ia(ifs);
+        ia >> n2;
+        string ET01[] = { "slon", "cie", "duza", "slaby"}; ExampleTest et01 = createExample( ET01, ET01 + 4, n2);
+        BOOST_CHECK( n2.getCategory(et01) == n2.getCategoryIdd("bad") );
+    }
+
+}
 BOOST_AUTO_TEST_SUITE_END()
 

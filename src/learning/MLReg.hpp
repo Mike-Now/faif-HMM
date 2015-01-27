@@ -13,11 +13,14 @@
 #include <boost/multi_array.hpp>
 #include <boost/optional.hpp>
 #include <boost/any.hpp>
-/* #include <boost/serialization/split_member.hpp> */
-/* #include <boost/serialization/base_object.hpp> */
-/* #include <boost/serialization/nvp.hpp> */
-/* #include <boost/serialization/map.hpp> */
-/* #include <boost/serialization/vector.hpp> */
+#include <boost/variant.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/nvp.hpp>
+#include <boost/serialization/split_member.hpp>
+#include <boost/serialization/base_object.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/variant.hpp>
 #include "Classifier.hpp"
 #include "MachineLearningExceptions.hpp"
 #include "../../dev/boostFix.hpp"
@@ -40,13 +43,14 @@ namespace faif {
                     typedef typename Classifier<Val>::ExampleTest ExampleTest;
                     typedef typename Classifier<Val>::ExampleTrain ExampleTrain;
                     typedef typename Classifier<Val>::ExamplesTrain ExamplesTrain;
+                    typedef typename boost::variant<double, int> TrainingType;
 
                     /**
                      * a container for training parameters.
                      *
                      * the convenience class to set dynamic parameters.
                      */
-                    struct TrainingParameters : std::map<std::string,boost::any>{
+                    struct TrainingParameters : std::map<std::string, TrainingType >{
 
                         template<class T>
                             T get(const std::string key)const{
@@ -55,8 +59,9 @@ namespace faif {
                                     std::string msg="No such training parameter: "+key;
                                     throw std::runtime_error(msg);
                                 }
-                                else
-                                    return boost::any_cast<T>(it->second);
+                                else {
+                                    return boost::get<T>(it->second);
+                                }
                             }
                         bool exists(const std::string key)const{
                             iterator it = this->find(key);
@@ -66,7 +71,16 @@ namespace faif {
                                 return true;
                         }
                         private:
-                        typedef std::map<std::string,boost::any>::const_iterator iterator;
+                        typedef std::map<std::string, TrainingType >::const_iterator iterator;
+
+                        friend class boost::serialization::access;
+
+                        template<typename Archive>
+                        void serialize(Archive & ar, const unsigned int version) {
+                            ar.template register_type< std::map<std::string,  TrainingType> >();
+                            typedef typename std::map<std::string,  TrainingType> map;
+                            ar & BOOST_SERIALIZATION_BASE_OBJECT_NVP(map);
+                        }
 
                     };
 
@@ -82,6 +96,10 @@ namespace faif {
                      * a dynamic matrix for values of 'double' type.
                      */
                     struct Matrix: boost::multi_array<double, 2>{
+                        Matrix(): boost::multi_array<double, 2>(){
+
+                        }
+
                         Matrix(int n,int m): boost::multi_array<double,2>(boost::extents[n][m]){
                             reset();
                         }
@@ -126,6 +144,13 @@ namespace faif {
                         Matrix& operator =(const Matrix &m){
                             boost::multi_array<double, 2>::operator = (m);
                             return *this;
+                        }
+
+                        template<typename Archive>
+                        void serialize(Archive & ar, const unsigned int version) {
+                            typedef typename boost::multi_array<double, 2> marray;
+                            ar.template register_type< marray >();
+                            ar & BOOST_SERIALIZATION_BASE_OBJECT_NVP(marray);
                         }
                     };
 
@@ -276,7 +301,14 @@ namespace faif {
                         virtual void setParameters(const typename MLReg<Val>::TrainingParameters &p)=0;
                         virtual Matrix* train(IExamples& examples)=0;
                         virtual ~MLRegTraining(){};
+
+                        private:
                         friend class boost::serialization::access;
+                        template<typename Archive>
+                        void serialize(Archive & ar, const unsigned int version) {
+                        }
+
+
                     };
                     class BGDTraining : public MLRegTraining{
                         friend class boost::serialization::access;
@@ -291,7 +323,15 @@ namespace faif {
                                 Matrix& parameters,ICategoryId catId);
                         Matrix* train(IExamples& examples);
                         ~BGDTraining(){}
+
                         private:
+                        friend class boost::serialization::access;
+                        template<typename Archive>
+                        void serialize(Archive & ar, const unsigned int version) {
+                            boost::serialization::void_cast_register<BGDTraining, MLRegTraining>();
+                            ar & learningRate;
+                            ar & totalIterations;
+                        }
                     };
                 private:
 
@@ -328,7 +368,6 @@ namespace faif {
                         public:
                             IExample mapTestExample(const ExampleTest& example)const;
                             IExamplesPtr mapExamples(const ExamplesTrain& examples) const;
-                            AttrIdd classify(const ExampleTest& testEx);
                             Model(MLReg & parent): parent_(&parent){
                                 mapAttributes();
                             }
@@ -339,7 +378,7 @@ namespace faif {
                             void setParameters(Matrix *trainedParams);
 
                         private:
-                            Model();
+                            Model() { };
                             template<typename Archive>
                             void serialize(Archive & ar, const unsigned int version);
                             void mapAttributes();
@@ -393,7 +432,9 @@ namespace faif {
         template<typename Archive>
             void MLReg<Val>::serialize(Archive & ar, const unsigned int version)
             {
-                ar & boost::serialization::base_object< Classifier<Val> >(*this);
+                //ar.template register_type< Classifier<Val> >();
+                ar.template register_type< BGDTraining >();
+                ar & BOOST_SERIALIZATION_BASE_OBJECT_NVP(Classifier<Val>);
 
                 ar & model;
                 model->parent_ = this;
