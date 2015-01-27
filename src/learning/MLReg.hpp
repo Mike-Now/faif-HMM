@@ -23,7 +23,6 @@
 #include <boost/serialization/variant.hpp>
 #include "Classifier.hpp"
 #include "MachineLearningExceptions.hpp"
-#include "../../dev/boostFix.hpp"
 
 //boostFix, boost in nature does not support serialization of unique_ptr nor multi_array
 namespace boost { 
