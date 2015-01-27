@@ -15,7 +15,6 @@
 /nbcdb
 /random
 /search
-/test*
 /dev/MlrTest
 /dev/mlr
 /dev/*.o
@@ -23,6 +22,8 @@
 /install/*
 !/install/DoxyFile
 !/install/Sconscript
+/test*
+!/tests
 
 *.obj
 *.pyc
