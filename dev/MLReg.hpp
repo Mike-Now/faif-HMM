@@ -350,7 +350,7 @@ namespace faif {
 
                             MLReg * parent_;
 
-                            friend class MLReg;
+                            friend class MLReg<Val>;
 
                     };
             }; //class MLReg
@@ -572,7 +572,7 @@ namespace faif {
          */
         template<typename Val>
             typename MLReg<Val>::IExamplesPtr
-            MLReg<Val>::Model::mapExamples(typename const MLReg<Val>::ExamplesTrain& examples)const {
+            MLReg<Val>::Model::mapExamples(const MLReg<Val>::ExamplesTrain& examples)const {
                 //possible ugly solution for dispatching types based on nested type ValueNominal<T>
                 /* bool isNominal=(typeid(typename AttrDomain::ValueTag)==typeid(faif::nominal_tag)); */
                 int nattrNum = attrMap.size();
