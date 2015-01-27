@@ -378,7 +378,6 @@ namespace faif {
                         ~BGDTraining(){}
 
                         private:
-                        friend class boost::serialization::access;
                         template<typename Archive>
                         void serialize(Archive & ar, const unsigned int version) {
                             boost::serialization::void_cast_register<BGDTraining, MLRegTraining>();
