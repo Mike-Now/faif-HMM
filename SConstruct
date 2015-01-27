@@ -7,9 +7,9 @@ ver_major = '0'
 ver_minor = '36'
 ver_compilation = '000'
 
-BOOST_INCLUDE_WINDOWS = 'c:/Boost/include/boost-1_57'
-BOOST_INCLUDE_LINUX = '/usr/local/include'
-BOOST_LIB_WINDOWS = 'c:/Boost/lib'
+BOOST_INCLUDE_WINDOWS = 'D:/boost_1_57_0'
+BOOST_INCLUDE_LINUX = '/usr/local/include/boost'
+BOOST_LIB_WINDOWS = 'D:/boost_1_57_0/lib64-msvc-12.0'
 BOOST_LIB_LINUX = '/usr/local/lib'
 
 BOOST_THREAD_LINUX = 'boost_thread'
