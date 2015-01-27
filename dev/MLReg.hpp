@@ -281,7 +281,7 @@ namespace faif {
                         int totalIterations;
                         BGDTraining():learningRate(0.01),totalIterations(3000){}
                         void setParameters(TrainingParameters &p);
-                        double calcCost(MLReg<Val>::IExamples& example,Matrix& parameters);
+                        double calcCost(typename MLReg<Val>::IExamples& example,Matrix& parameters);
                         Vector calcGrad(IExamples &examples,
                                 Matrix& parameters,ICategoryId catId);
                         Matrix* train(IExamples& examples);
@@ -572,7 +572,7 @@ namespace faif {
          */
         template<typename Val>
             typename MLReg<Val>::IExamplesPtr
-            MLReg<Val>::Model::mapExamples(const MLReg<Val>::ExamplesTrain& examples)const {
+            MLReg<Val>::Model::mapExamples(typename const MLReg<Val>::ExamplesTrain& examples)const {
                 //possible ugly solution for dispatching types based on nested type ValueNominal<T>
                 /* bool isNominal=(typeid(typename AttrDomain::ValueTag)==typeid(faif::nominal_tag)); */
                 int nattrNum = attrMap.size();
@@ -689,7 +689,7 @@ namespace faif {
          */
         template<typename Val>
             typename MLReg<Val>::Matrix
-            *MLReg<Val>::BGDTraining::train(MLReg<Val>::IExamples& examples){
+            *MLReg<Val>::BGDTraining::train(typename MLReg<Val>::IExamples& examples){
                 int catN = examples.categoriesCount;
                 int attrN = examples[0].size();
 
@@ -721,7 +721,7 @@ namespace faif {
          */
         template<typename Val>
             typename MLReg<Val>::Vector
-            MLReg<Val>::BGDTraining::calcGrad(MLReg<Val>::IExamples& examples,
+            MLReg<Val>::BGDTraining::calcGrad(typename MLReg<Val>::IExamples& examples,
                     Matrix& parameters, ICategoryId catId)
             {
                 int attrNum = examples[0].size();
@@ -750,7 +750,7 @@ namespace faif {
          * calculate the value of the cost function.
          */
         template<typename Val>
-            double MLReg<Val>::BGDTraining::calcCost(MLReg<Val>::IExamples& examples,
+            double MLReg<Val>::BGDTraining::calcCost(typename MLReg<Val>::IExamples& examples,
                     Matrix& parameters){
                 double multiplier = -1/examples.size();
                 double cost =0.0;
@@ -770,7 +770,7 @@ namespace faif {
          * adjust settings for a trainer
          */
         template<typename Val>
-            void MLReg<Val>::BGDTraining::setParameters(MLReg<Val>::TrainingParameters &p){
+            void MLReg<Val>::BGDTraining::setParameters(typename MLReg<Val>::TrainingParameters &p){
                 if(p.exists("totalIterations")){
                     int t = p.template get<int>("totalIterations");
                     this->totalIterations=t;}

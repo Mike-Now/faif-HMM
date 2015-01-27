@@ -25,7 +25,11 @@
 /test*
 !/tests
 
+*.lib
+*.exe
+*.pdb
 *.obj
+*.exp
 *.pyc
 *.dblite
 *.swp
