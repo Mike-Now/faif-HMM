@@ -57,7 +57,7 @@ namespace faif {
                                 else
                                     return boost::any_cast<T>(it->second);
                             }
-                        bool exists(const std::string key){
+                        bool exists(const std::string key)const{
                             iterator it = this->find(key);
                             if(it==this->end())
                                 return false;
@@ -269,7 +269,7 @@ namespace faif {
                             return MLReg::calcSoftMax(ex,c,p,cons);
                         }
 
-                        virtual void setParameters(TrainingParameters &p)=0;
+                        virtual void setParameters(const typename MLReg<Val>::TrainingParameters &p)=0;
                         virtual Matrix* train(IExamples& examples)=0;
                         virtual ~MLRegTraining(){};
                     };
@@ -280,7 +280,7 @@ namespace faif {
                         double learningRate;
                         int totalIterations;
                         BGDTraining():learningRate(0.01),totalIterations(3000){}
-                        void setParameters(TrainingParameters &p);
+                        void setParameters(const typename MLReg<Val>::TrainingParameters &p);
                         double calcCost(typename MLReg<Val>::IExamples& example,Matrix& parameters);
                         Vector calcGrad(IExamples &examples,
                                 Matrix& parameters,ICategoryId catId);
@@ -319,6 +319,7 @@ namespace faif {
 
                     };
                     class Model{
+                        typedef typename MLReg<Val>::ExampleTest ExamplesTest;
                         public:
                             IExample mapTestExample(const ExampleTest& example)const;
                             IExamplesPtr mapExamples(const ExamplesTrain& examples) const;
@@ -572,7 +573,7 @@ namespace faif {
          */
         template<typename Val>
             typename MLReg<Val>::IExamplesPtr
-            MLReg<Val>::Model::mapExamples(const MLReg<Val>::ExamplesTrain& examples)const {
+            MLReg<Val>::Model::mapExamples(const typename MLReg<Val>::ExamplesTrain& examples)const {
                 //possible ugly solution for dispatching types based on nested type ValueNominal<T>
                 /* bool isNominal=(typeid(typename AttrDomain::ValueTag)==typeid(faif::nominal_tag)); */
                 int nattrNum = attrMap.size();
@@ -611,7 +612,7 @@ namespace faif {
          */
         template <typename Val>
             typename MLReg<Val>::IExample
-            MLReg<Val>::Model::mapTestExample(const ExampleTest& example)const{
+            MLReg<Val>::Model::mapTestExample(const typename MLReg<Val>::ExampleTest& example)const{
                 //possible ugly solution for dispatching types based on nested type ValueNominal<T>
                 /* bool isNominal=(typeid(typename AttrDomain::ValueTag)==typeid(faif::nominal_tag)); */
                 int vecSize=parameters->size2();
@@ -635,7 +636,7 @@ namespace faif {
          */
         template<typename Val>
             typename MLReg<Val>::AttrIdd
-            MLReg<Val>::Model::getCategory(const ExampleTest& example) const {
+            MLReg<Val>::Model::getCategory(const typename MLReg<Val>::ExampleTest& example) const {
                 Probability maxProb=0;
                 ICategoryId bestCatId;
                 IExample ex= mapTestExample(example);
@@ -659,7 +660,7 @@ namespace faif {
          */
         template<typename Val>
             typename MLReg<Val>::Beliefs
-            MLReg<Val>::Model::getCategories(const ExampleTest& example) const {
+            MLReg<Val>::Model::getCategories(const typename MLReg<Val>::ExampleTest& example) const {
                 Beliefs b;
                 IExample ex = mapTestExample(example);
                 for(int i=0;i<parameters->size1();i++){
@@ -770,7 +771,7 @@ namespace faif {
          * adjust settings for a trainer
          */
         template<typename Val>
-            void MLReg<Val>::BGDTraining::setParameters(typename MLReg<Val>::TrainingParameters &p){
+            void MLReg<Val>::BGDTraining::setParameters(const typename MLReg<Val>::TrainingParameters &p){
                 if(p.exists("totalIterations")){
                     int t = p.template get<int>("totalIterations");
                     this->totalIterations=t;}
