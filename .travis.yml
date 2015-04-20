@@ -3,7 +3,6 @@ branches:
             master
 language: cpp
 before_install:
-    - sudo apt-get update
 install:
     - sudo apt-get install libboost-all-dev
 before_script: cd dev
